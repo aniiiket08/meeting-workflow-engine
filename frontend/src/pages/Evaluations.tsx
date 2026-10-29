@@ -17,25 +17,22 @@ const MetricCard: React.FC<MetricCardProps> = ({
   description,
   status,
 }) => (
-  <div className="editorial-card flex flex-col justify-between">
+  <div className="editorial-card-raised p-5 flex flex-col justify-between">
     <div>
       <div className="flex items-center justify-between mb-2">
-        <span className="label text-ink-faint">{label}</span>
+        <span className="label text-ink-faint text-11">{label}</span>
         {status === "pass" ? (
-          <span className="editorial-tag editorial-tag-ok text-9">PASS</span>
+          <span className="editorial-tag editorial-tag-ok text-10">PASS</span>
         ) : (
-          <span className="editorial-tag editorial-tag-warn text-9">REVIEW</span>
+          <span className="editorial-tag editorial-tag-warn text-10">REVIEW</span>
         )}
       </div>
-      <div
-        className="font-serif text-ink tracking-tight mb-1"
-        style={{ fontSize: "36px", lineHeight: "1" }}
-      >
+      <div className="font-serif text-32 sm:text-36 text-ink tracking-tight mb-1 font-normal leading-tight">
         {value}
       </div>
-      <div className="font-mono text-11 text-ink-soft">Target: {target}</div>
+      <div className="font-mono text-12 text-ink-soft">Target threshold: {target}</div>
     </div>
-    <p className="font-sans text-12 text-ink-soft mt-3 pt-3 border-t border-rule">
+    <p className="font-sans text-12 text-ink-soft mt-3 pt-3 border-t border-rule/60 leading-relaxed">
       {description}
     </p>
   </div>

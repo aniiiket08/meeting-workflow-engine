@@ -98,7 +98,7 @@ def approve_agenda(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(UserRole.CHAIRMAN)),
 ) -> dict[str, Any]:
-    """Human Approval Gate: Approve meeting agenda."""
+    """Human Approval Gate: Approve meeting agenda (Chairman only)."""
     db_agenda = db.query(Agenda).filter(Agenda.id == agenda_id).first()
     if not db_agenda:
         raise NotFound(entity="Agenda", identifier=agenda_id)

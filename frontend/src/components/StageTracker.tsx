@@ -50,58 +50,54 @@ export const StageTracker: React.FC<Props> = ({ status, meetingId, className = "
   const navigate = useNavigate();
 
   return (
-    <div className={`${className}`} aria-label="Meeting stage">
-      {/* Rule with markers */}
-      <div className="stage-track" role="list">
-        {STAGES.map((stage, idx) => (
-          <React.Fragment key={stage.key}>
-            <button
-              type="button"
-              className={`stage-marker${idx < activeIdx ? " done" : idx === activeIdx ? " active" : ""}`}
-              role="listitem"
-              aria-label={`${stage.label}: ${idx < activeIdx ? "done" : idx === activeIdx ? "current" : "upcoming"}`}
-              disabled={!meetingId}
-              onClick={(event) => {
-                event.stopPropagation();
-                if (meetingId) navigate(stagePath(meetingId, stage.key));
-              }}
-            />
-            {idx < STAGES.length - 1 && <div className="stage-connector" />}
-          </React.Fragment>
-        ))}
-      </div>
+    <div
+      className={`w-full relative ${className}`}
+      aria-label="Meeting stage"
+    >
+      {/* Background connector line running through marker centers (marker height is 10px, center at 5px) */}
+      <div 
+        className="absolute top-[5px] left-[10%] right-[10%] h-px bg-rule -z-0 pointer-events-none" 
+        aria-hidden="true"
+      />
 
-      {/* Labels under each marker */}
-      <div className="flex mt-1.5" style={{ gap: 0 }}>
-        {STAGES.map((stage, idx) => (
-          <React.Fragment key={stage.key}>
-            <div
-              className="flex justify-center"
-              style={{ width: 10, flexShrink: 0 }}
-            >
+      {/* 5 equal columns with centered content */}
+      <div className="grid grid-cols-5 w-full relative z-10" role="list">
+        {STAGES.map((stage, idx) => {
+          const isDone = idx < activeIdx;
+          const isActive = idx === activeIdx;
+
+          return (
+            <div key={stage.key} className="flex flex-col items-center justify-start text-center group">
+              <button
+                type="button"
+                className={`stage-marker ${isDone ? "done" : isActive ? "active" : ""} ${
+                  meetingId ? "hover:scale-125 transition-transform" : ""
+                }`}
+                role="listitem"
+                aria-label={`${stage.label}: ${isDone ? "done" : isActive ? "current" : "upcoming"}`}
+                disabled={!meetingId}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (meetingId) navigate(stagePath(meetingId, stage.key));
+                }}
+                title={meetingId ? `Go to ${stage.label}` : stage.label}
+              />
               <span
-                className="label"
+                className="font-sans text-10 mt-1 tracking-tight text-center select-none block w-full truncate"
                 style={{
-                  fontSize: 9,
-                  color:
-                    idx < activeIdx
-                      ? "var(--ink-faint)"
-                      : idx === activeIdx
-                      ? "var(--accent)"
-                      : "var(--ink-faint)",
-                  transform: "translateX(-50%)",
-                  display: "block",
-                  whiteSpace: "nowrap",
-                  position: "relative",
-                  left: "50%",
+                  color: isActive
+                    ? "var(--accent)"
+                    : isDone
+                    ? "var(--ink-soft)"
+                    : "var(--ink-faint)",
+                  fontWeight: isActive ? 600 : 400,
                 }}
               >
                 {stage.label}
               </span>
             </div>
-            {idx < STAGES.length - 1 && <div style={{ flex: 1 }} />}
-          </React.Fragment>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

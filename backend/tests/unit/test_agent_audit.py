@@ -555,12 +555,23 @@ def test_graph_approval_nodes_persist_human_approval(audit_db):
 
 
 def test_mcp_lists_only_registered_tool_and_enforces_agent_allowlist():
-    assert [tool["name"] for tool in mcp_server.list_tools()] == ["calendar_freebusy"]
+    tools = [tool["name"] for tool in mcp_server.list_tools()]
+    assert "calendar_freebusy" in tools
+    assert "room_search" in tools
+    assert "room_book" in tools
+    assert "zoom_create_meeting" in tools
+    assert "zoom_get_meeting" in tools
     with pytest.raises(ToolError):
         mcp_server.call_tool(
             "calendar_freebusy",
             {"emails": ["owner@test.local"]},
             agent_name="room_booking_agent",
+        )
+    with pytest.raises(ToolError):
+        mcp_server.call_tool(
+            "room_book",
+            {"meeting_id": 1, "room_id": 1, "start_time": "2026-10-06T09:00:00Z", "end_time": "2026-10-06T10:00:00Z"},
+            agent_name="agenda_agent",
         )
 
 

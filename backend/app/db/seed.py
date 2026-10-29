@@ -70,29 +70,10 @@ def seed_database(db: Session) -> None:
     if created_users:
         logger.info("Seeded %d missing university users.", created_users)
 
-    # Upsert rooms by name — idempotent; running again updates capacity/equipment without duplicating.
-    desired_rooms = [
-        {
-            "name": "Auditorium",
-            "capacity": 200,
-            "equipment": ["projector", "mic", "whiteboard", "video_conf", "stage", "seating"],
-        },
-        {
-            "name": "IoT Lab",
-            "capacity": 40,
-            "equipment": ["projector", "mic", "whiteboard", "stage"],
-        },
-        {
-            "name": "STEP Hall",
-            "capacity": 100,
-            "equipment": ["projector", "mic", "whiteboard", "video_conf", "stage"],
-        },
-        {
-            "name": "MB 104",
-            "capacity": 60,
-            "equipment": ["projector", "mic", "whiteboard", "stage"],
-        },
-    ]
+    # Upsert rooms by name — idempotent; read from environment_data_service (Meeting_Room_Facilities.docx)
+    from app.services.environment_parser import environment_data_service
+
+    desired_rooms = environment_data_service.get_room_facilities()
     created_rooms = 0
     for spec in desired_rooms:
         room = db.query(Room).filter_by(name=spec["name"]).first()

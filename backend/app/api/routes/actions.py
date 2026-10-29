@@ -2,7 +2,7 @@ from typing import List, Optional
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func, or_
 
 from app.api.deps import get_current_user, get_db, is_meeting_manager
@@ -31,7 +31,9 @@ class ActionStatusUpdate(BaseModel):
     status: ActionStatus
 
 class ActionAssignRequest(BaseModel):
-    user_id: int | None
+    user_id: int | None = Field(None, alias="owner_id")
+
+    model_config = {"populate_by_name": True}
 
 @router.get("", response_model=List[ActionItemResponse])
 def list_action_items(

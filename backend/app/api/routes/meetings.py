@@ -134,6 +134,49 @@ def confirm_meeting_slot(
             detail="Only the meeting organizer or a university manager can confirm its time.",
         )
 
+    # When user chooses an online meeting via Zoom MCP:
+    if payload.is_online:
+        from dateutil.parser import parse as parse_date
+        from mcp_server.server import MCPServerSkeleton
+        mcp = MCPServerSkeleton()
+        
+        # Calculate start/end dt
+        start_dt = parse_date(payload.selected_start_time)
+        end_dt = parse_date(payload.selected_end_time)
+        if start_dt.tzinfo is None:
+            start_dt = start_dt.replace(tzinfo=timezone.utc)
+        if end_dt.tzinfo is None:
+            end_dt = end_dt.replace(tzinfo=timezone.utc)
+            
+        duration = max(15, int((end_dt - start_dt).total_seconds() // 60))
+        zoom_res = mcp.call_tool(
+            "zoom_create_meeting",
+            {
+                "topic": meeting.title,
+                "start_time": start_dt.isoformat(),
+                "duration_minutes": duration,
+                "timezone": "UTC",
+                "idempotency_key": f"meeting_{meeting.id}_{start_dt.isoformat()}",
+            },
+            agent_name="scheduling_agent",
+        )
+        meeting.start_time = start_dt
+        meeting.end_time = end_dt
+        meeting.room_id = None
+        meeting.zoom_meeting_id = str(zoom_res.get("id"))
+        meeting.zoom_join_url = zoom_res.get("join_url")
+        meeting.status = MeetingStatus.ROOM_BOOKED  # Time & venue confirmed
+        db.commit()
+        db.refresh(meeting)
+        return {
+            "meeting": MeetingResponse.model_validate(meeting),
+            "room_booking": {
+                "status": "online",
+                "message": "Zoom Online Meeting successfully scheduled.",
+                "zoom": zoom_res,
+            },
+        }
+
     headcount = len(meeting.attendees) if meeting.attendees else 1
 
     # Run Room Booking Agent — pass an explicit room_id when the user selected one.

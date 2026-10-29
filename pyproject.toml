@@ -59,4 +59,8 @@ addopts = "-ra -q"
 testpaths = [
     "backend/tests",
 ]
+pythonpath = [
+    ".",
+    "backend",
+]
 asyncio_mode = "auto"

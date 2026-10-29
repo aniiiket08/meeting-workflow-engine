@@ -18,10 +18,10 @@ A multi-agent system that owns the **entire meeting lifecycle**: finding the slo
 
 | User | Role | Needs |
 | --- | --- | --- |
-| **Coordinator** (primary) | Faculty/HoD/student lead who organizes meetings | Fast scheduling, ready agenda, approved minutes |
-| **Attendee** | Faculty, students, committee members | Clear agenda, their action items, reminders |
-| **Approver** | Chair / senior faculty | Review and sign off minutes |
-| **Admin** | Department office | Room and resource management, audit logs |
+| **HOD / Teacher** (primary coordinator) | Faculty who organizes meetings | Fast scheduling, ready agenda, approved minutes |
+| **Teacher / Student** | Faculty and student attendees | Clear agenda, their action items, reminders |
+| **Chairman / Principal** (approver) | Chair or Head of Institution | Review and sign off agendas and minutes |
+| **Chairman / Principal** (admin) | Senior authority / department office | Room and resource management, audit logs, Activity trace |
 
 ## 3. Scope
 

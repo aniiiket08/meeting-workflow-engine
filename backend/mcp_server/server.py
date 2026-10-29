@@ -3,6 +3,8 @@ from typing import Any
 from app.core.errors import ToolError
 from app.core.logging import setup_logging
 from mcp_server.tools.calendar_tools import fetch_attendee_freebusy
+from mcp_server.tools.room_tools import room_book, room_search
+from mcp_server.tools.zoom_tools import zoom_create_meeting, zoom_get_meeting
 
 logger = setup_logging()
 
@@ -13,18 +15,27 @@ class MCPServerSkeleton:
     def __init__(self):
         self.tools = {
             "calendar_freebusy": fetch_attendee_freebusy,
+            "room_search": room_search,
+            "room_book": room_book,
+            "zoom_create_meeting": zoom_create_meeting,
+            "zoom_get_meeting": zoom_get_meeting,
         }
         self.tool_allowlists = {
-            "scheduling_agent": frozenset({"calendar_freebusy"}),
-            "room_booking_agent": frozenset(),
+            "scheduling_agent": frozenset({"calendar_freebusy", "zoom_create_meeting", "zoom_get_meeting"}),
+            "room_booking_agent": frozenset({"room_search", "room_book", "zoom_create_meeting", "zoom_get_meeting"}),
             "agenda_agent": frozenset(),
             "minutes_agent": frozenset(),
             "action_tracker_agent": frozenset(),
             "reminder_agent": frozenset(),
-            "distribution_agent": frozenset(),
+            "distribution_agent": frozenset({"zoom_get_meeting"}),
+            "orchestrator": frozenset({"calendar_freebusy", "room_search", "room_book", "zoom_create_meeting", "zoom_get_meeting"}),
         }
         self.tool_descriptions = {
             "calendar_freebusy": "Fetch attendee busy intervals",
+            "room_search": "Search available rooms matching capacity, window, and equipment",
+            "room_book": "Book a room for a meeting with double-booking prevention",
+            "zoom_create_meeting": "Create a Zoom meeting with topic, start time, duration, and timezone",
+            "zoom_get_meeting": "Retrieve Zoom meeting details by meeting ID",
         }
 
     def list_tools(self) -> list[dict[str, str]]:

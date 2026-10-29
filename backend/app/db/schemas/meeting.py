@@ -33,6 +33,7 @@ class MeetingConfirmRequest(BaseModel):
     selected_start_time: str
     selected_end_time: str
     room_id: int | None = None
+    is_online: bool = False
 
 
 class MeetingResponse(BaseModel):
@@ -47,6 +48,8 @@ class MeetingResponse(BaseModel):
     end_time: datetime | None
     organizer_id: int
     room_id: int | None
+    zoom_meeting_id: str | None = None
+    zoom_join_url: str | None = None
     status: MeetingStatus
     created_at: datetime
 

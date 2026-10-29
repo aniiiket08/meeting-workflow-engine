@@ -218,7 +218,7 @@ export const AgendaEditor: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* ── Main Agenda Item Editor (8 cols) ─────────────── */}
-            <div className="lg:col-span-8 editorial-card space-y-6">
+            <div className="lg:col-span-8 editorial-card-raised p-6 space-y-5">
               {/* Header with duration meter */}
               <div className="flex items-center justify-between pb-3 border-b border-rule">
                 <div>
@@ -254,11 +254,11 @@ export const AgendaEditor: React.FC = () => {
               </div>
 
               {/* Items List */}
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {agenda.items.map((item, idx) => (
                   <div
                     key={idx}
-                    className="p-3 bg-paper border border-rule rounded-sm flex flex-col sm:flex-row sm:items-center gap-3 group hover:border-ink transition-colors"
+                    className="p-3 bg-paper border border-rule rounded-sm flex flex-col sm:flex-row sm:items-center gap-3 group hover:border-ink transition-colors shadow-sm"
                   >
                     <span className="font-mono text-11 text-ink-faint shrink-0 w-6">
                       {String(idx + 1).padStart(2, "0")}
@@ -271,7 +271,7 @@ export const AgendaEditor: React.FC = () => {
                         value={item.title}
                         disabled={!canEdit || agenda.status === "approved"}
                         onChange={(e) => handleItemChange(idx, "title", e.target.value)}
-                        className="w-full bg-transparent font-serif text-15 text-ink outline-none border-b border-transparent focus:border-ink pb-0.5"
+                        className="w-full bg-transparent font-serif text-14 text-ink outline-none border-b border-transparent focus:border-ink pb-0.5"
                         placeholder="Topic title…"
                       />
                     </div>
@@ -325,7 +325,7 @@ export const AgendaEditor: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleAddItem}
-                  className="btn-secondary text-11 flex items-center gap-1"
+                  className="btn-secondary text-11 py-1.5 px-3 flex items-center gap-1"
                 >
                   <Plus size={13} />
                   <span>Add Agenda Topic</span>
@@ -334,9 +334,9 @@ export const AgendaEditor: React.FC = () => {
             </div>
 
             {/* ── Actions & Gate Check (4 cols) ───────────────── */}
-            <div className="lg:col-span-4 space-y-6">
-              <div className="editorial-card space-y-4">
-                <span className="label text-ink-faint block">Human Approval Gate</span>
+            <div className="lg:col-span-4 space-y-5">
+              <div className="editorial-card-raised p-6 space-y-4">
+                <span className="label text-ink-faint block text-10">Human Approval Gate</span>
 
                 {agenda.status === "approved" ? (
                   <div className="space-y-2">
@@ -354,7 +354,7 @@ export const AgendaEditor: React.FC = () => {
                       Review topics and time allocations. Once signed off by an approver, the agenda is released for meeting preparation.
                     </p>
 
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       {canEdit && (
                         <button
                           type="button"
@@ -371,7 +371,7 @@ export const AgendaEditor: React.FC = () => {
                           type="button"
                           onClick={handleApprove}
                           disabled={approving}
-                          className="w-full btn-primary py-2 px-3 block text-center"
+                          className="w-full btn-primary py-2 px-3 block text-center text-12"
                         >
                           {approving ? "Locking & Approving…" : "Approve & Sign Agenda"}
                         </button>

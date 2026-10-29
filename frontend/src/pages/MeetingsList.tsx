@@ -40,7 +40,7 @@ function statusBadge(status: string) {
       return (
         <span className="editorial-tag editorial-tag-ok">
           <span className="status-marker bg-ok" />
-          {status.replace("_", " ")}
+          {status.replace(/_/g, " ")}
         </span>
       );
     case "requested":
@@ -48,7 +48,7 @@ function statusBadge(status: string) {
       return (
         <span className="editorial-tag editorial-tag-warn">
           <span className="status-marker bg-warn" />
-          {status.replace("_", " ")}
+          {status.replace(/_/g, " ")}
         </span>
       );
     case "discarded":
@@ -264,16 +264,16 @@ export const MeetingsList: React.FC = () => {
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-13 border-collapse">
+            <div className="w-full">
+              <table className="w-full table-fixed text-left text-13 border-collapse">
                 <thead>
                   <tr className="border-b border-rule-strong bg-surface font-sans text-11 uppercase tracking-wider text-ink-soft">
-                    <th className="py-3 px-4 font-medium">Session Title</th>
-                    <th className="py-3 px-4 font-medium">Scheduled Time</th>
-                    <th className="py-3 px-4 font-medium">Duration</th>
-                    <th className="py-3 px-4 font-medium hidden md:table-cell">Lifecycle</th>
-                    <th className="py-3 px-4 font-medium">Status</th>
-                    <th className="py-3 px-4 font-medium text-right">Quick Actions</th>
+                    <th className="py-3 px-3 font-medium w-[24%]">Session Title</th>
+                    <th className="py-3 px-2.5 font-medium w-[14%] whitespace-nowrap">Scheduled Time</th>
+                    <th className="py-3 px-2 font-medium w-[7%] whitespace-nowrap">Duration</th>
+                    <th className="py-3 px-2 font-medium hidden md:table-cell w-[19%]">Lifecycle Stage</th>
+                    <th className="py-3 px-2 font-medium w-[15%] whitespace-nowrap">Status</th>
+                    <th className="py-3 px-3 font-medium text-right w-[21%] whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-rule font-sans">
@@ -281,55 +281,55 @@ export const MeetingsList: React.FC = () => {
                     <tr
                       key={m.id}
                       onClick={() => navigate(`/meetings/${m.id}`)}
-                      className="table-row-hover group cursor-pointer"
+                      className="table-row-hover group cursor-pointer transition-colors"
                     >
-                      <td className="py-3.5 px-4 font-serif text-ink">
-                        <div className="font-medium group-hover:text-accent transition-colors">
+                      <td className="py-3 px-3 font-serif text-ink">
+                        <div className="font-medium text-14 group-hover:text-accent transition-colors truncate">
                           {m.title}
                         </div>
                         {m.description && (
-                          <div className="font-sans text-11 text-ink-faint truncate max-w-xs mt-0.5">
+                          <div className="font-sans text-12 text-ink-faint truncate mt-0.5">
                             {m.description}
                           </div>
                         )}
                       </td>
 
-                      <td className="py-3.5 px-4 font-mono text-12 text-ink-soft">
+                      <td className="py-3 px-2.5 font-mono text-12 text-ink-soft whitespace-nowrap">
                         {formatDateHuman(m.start_time)}
                       </td>
 
-                      <td className="py-3.5 px-4 font-mono text-12 text-ink-soft">
+                      <td className="py-3 px-2 font-mono text-12 text-ink-soft whitespace-nowrap">
                         {m.duration_minutes}m
                       </td>
 
-                      <td className="py-3.5 px-4 hidden md:table-cell">
+                      <td className="py-3 px-2 hidden md:table-cell">
                         <StageTracker status={m.status} meetingId={m.id} />
                       </td>
 
-                      <td className="py-3.5 px-4">
+                      <td className="py-3 px-2 whitespace-nowrap">
                         {statusBadge(m.status)}
                       </td>
 
-                      <td className="py-3.5 px-4 text-right">
+                      <td className="py-3 px-3 text-right whitespace-nowrap">
                         <div
-                          className="flex items-center justify-end gap-2"
+                          className="inline-flex items-center justify-end gap-1 flex-nowrap"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <Link
                             to={`/meetings/${m.id}`}
-                            className="text-11 font-sans text-ink-soft hover:text-ink px-2 py-1 rounded-sm border border-rule hover:border-ink transition-colors"
+                            className="text-11 font-sans text-ink-soft hover:text-ink px-2 py-0.5 rounded border border-rule hover:border-ink transition-colors shrink-0"
                           >
                             Details
                           </Link>
                           <Link
                             to={`/meetings/${m.id}/agenda`}
-                            className="text-11 font-sans text-ink-soft hover:text-ink px-2 py-1 rounded-sm border border-rule hover:border-ink transition-colors"
+                            className="text-11 font-sans text-ink-soft hover:text-ink px-2 py-0.5 rounded border border-rule hover:border-ink transition-colors shrink-0"
                           >
                             Agenda
                           </Link>
                           <Link
                             to={`/meetings/${m.id}/minutes`}
-                            className="text-11 font-sans text-ink-soft hover:text-ink px-2 py-1 rounded-sm border border-rule hover:border-ink transition-colors"
+                            className="text-11 font-sans text-ink-soft hover:text-ink px-2 py-0.5 rounded border border-rule hover:border-ink transition-colors shrink-0"
                           >
                             Minutes
                           </Link>
@@ -337,7 +337,7 @@ export const MeetingsList: React.FC = () => {
                             <button
                               type="button"
                               onClick={(e) => handleDiscard(e, m.id)}
-                              className="text-11 font-sans text-accent hover:opacity-75 p-1"
+                              className="text-11 font-sans text-accent hover:opacity-75 p-0.5 shrink-0 ml-0.5"
                               title="Discard meeting"
                               aria-label="Discard meeting"
                             >

@@ -309,13 +309,13 @@ export const AppShell: React.FC<AppShellProps> = ({
 
         {/* Page Header (if provided) */}
         {(pageTitle || actionButton) && (
-          <div className="border-b border-rule bg-surface/50 px-6 py-6 sm:px-10">
+          <div className="border-b border-rule bg-surface/60 px-6 py-5 sm:px-10 backdrop-blur-sm">
             <div className="max-w-content mx-auto flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-4">
               <div>
                 {pageTitle && (
-                  <h1 className="h1-display text-ink tracking-tight">{pageTitle}</h1>
+                  <h1 className="h1-display text-ink tracking-tight font-normal text-24 sm:text-30">{pageTitle}</h1>
                 )}
-                {pageSubtitle && <p className="lead-italic mt-1">{pageSubtitle}</p>}
+                {pageSubtitle && <p className="lead-italic mt-1 text-13 text-ink-soft max-w-reading">{pageSubtitle}</p>}
               </div>
               {actionButton && <div className="shrink-0">{actionButton}</div>}
             </div>
@@ -323,7 +323,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         )}
 
         {/* Page Content Body */}
-        <main className="flex-1 w-full max-w-content mx-auto px-6 py-8 sm:px-10">
+        <main className="flex-1 w-full max-w-content mx-auto px-6 py-7 sm:px-10">
           {children}
         </main>
       </div>

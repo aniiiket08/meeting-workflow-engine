@@ -6,12 +6,13 @@ from dateutil.parser import parse as parse_date
 
 from app.core.errors import ToolError, ValidationFailed
 from app.core.logging import logger
+from app.services.environment_parser import environment_data_service
 
 MOCK_CALENDAR_PATH = Path(__file__).resolve().parent.parent.parent.parent / "data" / "mock_calendar.json"
 
 
 class CalendarService:
-    """Service to interact with attendee calendars (Mock JSON implementation first)."""
+    """Service to interact with attendee calendars combining mock calendar events and environment timetable."""
 
     def __init__(self, data_path: Path = MOCK_CALENDAR_PATH):
         self.data_path = data_path
@@ -33,17 +34,28 @@ class CalendarService:
             raise ValidationFailed("Calendar data must be a mapping of attendee emails to events.")
         return data
 
-    def get_busy_slots(self, emails: list[str]) -> dict[str, list[dict[str, datetime]]]:
-        """Fetch busy events for each email address."""
+    def get_busy_slots(
+        self,
+        emails: list[str],
+        target_date: datetime | None = None,
+    ) -> dict[str, list[dict[str, datetime]]]:
+        """Fetch busy events for each email address.
+        
+        Combines events from data/mock_calendar.json and recurring classes/meetings
+        from the actual Weekly_Timetable.docx environment data.
+        """
         if not emails:
             raise ValidationFailed("At least one attendee email is required for scheduling.")
+
         raw_data = self._load_mock_data()
+        normalized_emails = [e.strip().lower() for e in emails]
         result: dict[str, list[dict[str, datetime]]] = {}
 
-        for email in emails:
+        # 1. Load mock data events for matching emails
+        for email in normalized_emails:
             if email not in raw_data:
                 continue
-            events = raw_data[email]
+            events = raw_data.get(email, [])
             busy_list = []
             try:
                 for ev in events:
@@ -63,7 +75,29 @@ class CalendarService:
                     tool_name="calendar.load_busy_slots",
                     details={"attendee": email},
                 ) from exc
+            
+            # If the email is known in mock data or environment timetable, record it
             result[email] = busy_list
+
+        # 2. Add timetable busy intervals from Weekly_Timetable.docx for the target date
+        if target_date is not None:
+            if target_date.tzinfo is None:
+                target_date = target_date.replace(tzinfo=timezone.utc)
+            timetable_busy = environment_data_service.get_busy_intervals_for_date(
+                target_date=target_date,
+                emails=normalized_emails,
+            )
+            for email, tt_events in timetable_busy.items():
+                if email not in result:
+                    result[email] = []
+                # Merge without duplicate intervals
+                for tt_ev in tt_events:
+                    already_has = any(
+                        existing["start"] == tt_ev["start"] and existing["end"] == tt_ev["end"]
+                        for existing in result[email]
+                    )
+                    if not already_has:
+                        result[email].append(tt_ev)
 
         return result
 

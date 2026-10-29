@@ -78,51 +78,51 @@ export const Admin: React.FC = () => {
 
         {/* ── Rooms Tab ───────────────────────────────────────── */}
         {activeTab === "rooms" && (
-          <div className="editorial-card">
+          <div className="editorial-card-raised p-6">
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-rule">
               <div>
-                <h3 className="font-serif text-16 text-ink">Registered Campus Facilities</h3>
-                <p className="font-sans text-12 text-ink-soft">
-                  Configured room capacities and hardware capabilities for conflict-free booking.
+                <h3 className="font-serif text-18 text-ink">Campus Facilities</h3>
+                <p className="font-sans text-12 text-ink-soft mt-0.5">
+                  Capacities and installed hardware for conflict-free scheduling.
                 </p>
               </div>
             </div>
 
             {loading ? (
-              <div className="py-8 font-serif italic text-ink-soft text-14 text-center">
+              <div className="py-10 font-serif italic text-ink-soft text-14 text-center">
                 Loading campus rooms…
               </div>
             ) : rooms.length === 0 ? (
-              <div className="py-8 font-serif italic text-ink-soft text-14 text-center">
+              <div className="py-10 font-serif italic text-ink-soft text-14 text-center">
                 No rooms configured in system.
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="w-full">
                 <table className="w-full text-left text-13 border-collapse">
                   <thead>
                     <tr className="border-b border-rule-strong font-sans text-11 uppercase tracking-wider text-ink-soft">
-                      <th className="py-2.5 font-medium">Room Name</th>
-                      <th className="py-2.5 font-medium">Capacity</th>
-                      <th className="py-2.5 font-medium">Installed Equipment</th>
-                      <th className="py-2.5 font-medium">Status</th>
+                      <th className="py-3 px-3.5 font-medium">Room Name</th>
+                      <th className="py-3 px-3.5 font-medium">Capacity</th>
+                      <th className="py-3 px-3.5 font-medium">Installed Equipment</th>
+                      <th className="py-3 px-3.5 font-medium">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-rule font-sans">
                     {rooms.map((room) => (
                       <tr key={room.id} className="hover:bg-tint/40 transition-colors">
-                        <td className="py-3 font-serif font-medium text-ink">
+                        <td className="py-3 px-3.5 font-serif font-medium text-ink text-14">
                           {room.name}
                         </td>
-                        <td className="py-3 font-mono text-12">
+                        <td className="py-3 px-3.5 font-mono text-12">
                           {room.capacity} seats
                         </td>
-                        <td className="py-3">
+                        <td className="py-3 px-3.5">
                           <div className="flex flex-wrap gap-1">
                             {room.equipment && room.equipment.length > 0 ? (
                               room.equipment.map((eq, i) => (
                                 <span
                                   key={i}
-                                  className="editorial-tag editorial-tag-default text-9"
+                                  className="editorial-tag editorial-tag-default text-9 px-1.5 py-0.5"
                                 >
                                   {eq}
                                 </span>
@@ -132,8 +132,8 @@ export const Admin: React.FC = () => {
                             )}
                           </div>
                         </td>
-                        <td className="py-3">
-                          <span className="editorial-tag editorial-tag-ok text-9">
+                        <td className="py-3 px-3.5">
+                          <span className="editorial-tag editorial-tag-ok text-9 px-1.5 py-0.5">
                             ACTIVE
                           </span>
                         </td>
@@ -148,47 +148,47 @@ export const Admin: React.FC = () => {
 
         {/* ── Users Tab ───────────────────────────────────────── */}
         {activeTab === "users" && (
-          <div className="editorial-card">
+          <div className="editorial-card-raised p-6">
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-rule">
               <div>
-                <h3 className="font-serif text-16 text-ink">University Members Directory</h3>
-                <p className="font-sans text-12 text-ink-soft">
+                <h3 className="font-serif text-18 text-ink">University Members Directory</h3>
+                <p className="font-sans text-12 text-ink-soft mt-0.5">
                   Roster of recognized accounts with role-based scheduling and approval authority.
                 </p>
               </div>
             </div>
 
             {loading ? (
-              <div className="py-8 font-serif italic text-ink-soft text-14 text-center">
+              <div className="py-10 font-serif italic text-ink-soft text-14 text-center">
                 Loading member directory…
               </div>
             ) : users.length === 0 ? (
-              <div className="py-8 font-serif italic text-ink-soft text-14 text-center">
+              <div className="py-10 font-serif italic text-ink-soft text-14 text-center">
                 No users found.
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="w-full">
                 <table className="w-full text-left text-13 border-collapse">
                   <thead>
                     <tr className="border-b border-rule-strong font-sans text-11 uppercase tracking-wider text-ink-soft">
-                      <th className="py-2.5 font-medium">Member</th>
-                      <th className="py-2.5 font-medium">Email</th>
-                      <th className="py-2.5 font-medium">Role Authority</th>
-                      <th className="py-2.5 font-medium">Permissions</th>
+                      <th className="py-3 px-3.5 font-medium">Member</th>
+                      <th className="py-3 px-3.5 font-medium">Email</th>
+                      <th className="py-3 px-3.5 font-medium">Role Authority</th>
+                      <th className="py-3 px-3.5 font-medium">Permissions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-rule font-sans">
                     {users.map((u) => (
                       <tr key={u.id} className="hover:bg-tint/40 transition-colors">
-                        <td className="py-3 font-serif font-medium text-ink">
+                        <td className="py-3 px-3.5 font-serif font-medium text-ink text-14">
                           {u.name}
                         </td>
-                        <td className="py-3 font-mono text-12 text-ink-soft">
+                        <td className="py-3 px-3.5 font-mono text-12 text-ink-soft">
                           {u.email}
                         </td>
-                        <td className="py-3">
+                        <td className="py-3 px-3.5">
                           <span
-                            className={`editorial-tag text-9 ${
+                            className={`editorial-tag text-9 px-1.5 py-0.5 ${
                               ["chairman", "principal"].includes(u.role)
                                 ? "editorial-tag-accent"
                                 : u.role === "hod"
@@ -199,7 +199,7 @@ export const Admin: React.FC = () => {
                             {u.role.toUpperCase()}
                           </span>
                         </td>
-                        <td className="py-3 text-12 text-ink-soft">
+                        <td className="py-3 px-3.5 text-12 text-ink-soft">
                           {u.role === "chairman"
                             ? "Full approval gate & admin"
                             : u.role === "principal" || u.role === "hod"
@@ -220,13 +220,15 @@ export const Admin: React.FC = () => {
         {/* ── System / MCP Tab ────────────────────────────────── */}
         {activeTab === "system" && (
           <div className="space-y-6">
-            <div className="editorial-card space-y-4">
-              <h3 className="font-serif text-16 text-ink">Model Context Protocol (MCP) Server</h3>
-              <p className="font-sans text-13 text-ink-soft">
-                Exposes typed meeting capabilities to Claude Desktop or external autonomous orchestrators.
-              </p>
+            <div className="editorial-card-raised p-6 space-y-4">
+              <div>
+                <h3 className="font-serif text-18 text-ink">Model Context Protocol (MCP) Server</h3>
+                <p className="font-sans text-12 text-ink-soft mt-0.5">
+                  Exposes typed meeting capabilities to Claude Desktop or external autonomous orchestrators.
+                </p>
+              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
                 <div className="p-4 bg-paper border border-rule rounded-sm space-y-2">
                   <div className="flex items-center gap-2">
                     <Wrench size={16} className="text-accent" />
@@ -234,10 +236,10 @@ export const Admin: React.FC = () => {
                       calendar.find_slots
                     </span>
                   </div>
-                  <p className="font-sans text-12 text-ink-soft">
+                  <p className="font-sans text-12 text-ink-soft leading-relaxed">
                     Computes non-conflicting time slots across attendees with back-to-back scoring.
                   </p>
-                  <span className="editorial-tag editorial-tag-ok text-9">READY</span>
+                  <span className="editorial-tag editorial-tag-ok text-9 px-1.5 py-0.5">READY</span>
                 </div>
 
                 <div className="p-4 bg-paper border border-rule rounded-sm space-y-2">
@@ -247,10 +249,10 @@ export const Admin: React.FC = () => {
                       room.book_room
                     </span>
                   </div>
-                  <p className="font-sans text-12 text-ink-soft">
+                  <p className="font-sans text-12 text-ink-soft leading-relaxed">
                     Idempotently books campus facilities with equipment matching and capacity checks.
                   </p>
-                  <span className="editorial-tag editorial-tag-ok text-9">READY</span>
+                  <span className="editorial-tag editorial-tag-ok text-9 px-1.5 py-0.5">READY</span>
                 </div>
 
                 <div className="p-4 bg-paper border border-rule rounded-sm space-y-2">
@@ -260,10 +262,10 @@ export const Admin: React.FC = () => {
                       minutes.get_minutes
                     </span>
                   </div>
-                  <p className="font-sans text-12 text-ink-soft">
+                  <p className="font-sans text-12 text-ink-soft leading-relaxed">
                     Retrieves version-locked minutes with cryptographic SHA-256 integrity hash.
                   </p>
-                  <span className="editorial-tag editorial-tag-ok text-9">READY</span>
+                  <span className="editorial-tag editorial-tag-ok text-9 px-1.5 py-0.5">READY</span>
                 </div>
 
                 <div className="p-4 bg-paper border border-rule rounded-sm space-y-2">
@@ -273,32 +275,32 @@ export const Admin: React.FC = () => {
                       actions.list_actions
                     </span>
                   </div>
-                  <p className="font-sans text-12 text-ink-soft">
+                  <p className="font-sans text-12 text-ink-soft leading-relaxed">
                     Exposes grounded action items with source timestamps and status filters.
                   </p>
-                  <span className="editorial-tag editorial-tag-ok text-9">READY</span>
+                  <span className="editorial-tag editorial-tag-ok text-9 px-1.5 py-0.5">READY</span>
                 </div>
               </div>
             </div>
 
-            <div className="editorial-card space-y-3">
-              <h3 className="font-serif text-16 text-ink">Backend Infrastructure Health</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
+            <div className="editorial-card-raised p-6 space-y-3">
+              <h3 className="font-serif text-18 text-ink">Backend Infrastructure Health</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
                 <div className="p-3 bg-paper border border-rule rounded-sm">
-                  <span className="text-10 font-sans text-ink-faint block uppercase">API Framework</span>
-                  <span className="font-serif font-medium text-ink">FastAPI 0.115</span>
+                  <span className="text-10 font-sans text-ink-faint block uppercase tracking-wider">API Framework</span>
+                  <span className="font-serif font-medium text-ink text-14 mt-0.5 block">FastAPI 0.115</span>
                 </div>
                 <div className="p-3 bg-paper border border-rule rounded-sm">
-                  <span className="text-10 font-sans text-ink-faint block uppercase">Database ORM</span>
-                  <span className="font-serif font-medium text-ink">SQLAlchemy 2.0</span>
+                  <span className="text-10 font-sans text-ink-faint block uppercase tracking-wider">Database ORM</span>
+                  <span className="font-serif font-medium text-ink text-14 mt-0.5 block">SQLAlchemy 2.0</span>
                 </div>
                 <div className="p-3 bg-paper border border-rule rounded-sm">
-                  <span className="text-10 font-sans text-ink-faint block uppercase">Vector Embeddings</span>
-                  <span className="font-serif font-medium text-ink">ChromaDB Local</span>
+                  <span className="text-10 font-sans text-ink-faint block uppercase tracking-wider">Vector Embeddings</span>
+                  <span className="font-serif font-medium text-ink text-14 mt-0.5 block">ChromaDB Local</span>
                 </div>
                 <div className="p-3 bg-paper border border-rule rounded-sm">
-                  <span className="text-10 font-sans text-ink-faint block uppercase">STT Model</span>
-                  <span className="font-serif font-medium text-ink">faster-whisper</span>
+                  <span className="text-10 font-sans text-ink-faint block uppercase tracking-wider">STT Model</span>
+                  <span className="font-serif font-medium text-ink text-14 mt-0.5 block">faster-whisper</span>
                 </div>
               </div>
             </div>

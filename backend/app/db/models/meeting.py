@@ -44,6 +44,8 @@ class Meeting(Base):
     
     organizer_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     room_id: Mapped[int | None] = mapped_column(ForeignKey("rooms.id"), nullable=True)
+    zoom_meeting_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    zoom_join_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     
     status: Mapped[MeetingStatus] = mapped_column(
         PyEnum(MeetingStatus, native_enum=False, values_callable=lambda x: [e.value for e in x]),

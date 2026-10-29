@@ -2,39 +2,52 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Design tokens ─────────────────────────────────────────── */
+/* ── Design tokens & Spatial Hierarchy ─────────────────────────── */
 :root {
-  --paper: #F6F3EE;
-  --surface: #FBFAF7;
-  --tint: #EFEBE4;
+  --paper: #F5F3EF;
+  --surface: #FCFBF9;
+  --surface-raised: #FFFFFF;
+  --tint: #ECE7DF;
+  --tint-subtle: #F0ECE4;
   --ink: #161513;
-  --ink-soft: #5C5850;
-  --ink-faint: #8F8A7F;
-  --rule: #D9D4CA;
+  --ink-soft: #555149;
+  --ink-faint: #8A857A;
+  --rule: #DDD8CD;
+  --rule-subtle: #E8E4DB;
   --rule-strong: #161513;
   --accent: #8A2F1F;
-  --accent-wash: #F0E1DC;
-  --ok: #3F5B3A;
-  --warn: #9A6B1C;
+  --accent-wash: #F3E4DF;
+  --ok: #345B32;
+  --warn: #96671A;
   --font-serif: "Libre Baskerville", Georgia, serif;
   --font-sans: "Jost", "Helvetica Neue", Arial, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
-  --radius: 2px;
+  --radius: 6px;
+  --shadow-spatial-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-spatial: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03);
+  --shadow-spatial-lg: 0 14px 34px -4px rgba(0, 0, 0, 0.08), 0 6px 14px -2px rgba(0, 0, 0, 0.04);
 }
 
 :root[data-theme="dark"] {
-  --paper: #131210;
-  --surface: #1A1917;
-  --tint: #211F1C;
-  --ink: #ECE7DD;
-  --ink-soft: #A8A296;
-  --ink-faint: #6F6A60;
-  --rule: #2E2B27;
-  --rule-strong: #ECE7DD;
-  --accent: #C4533F;
-  --accent-wash: #2A1814;
-  --ok: #8DAA84;
-  --warn: #D1A04E;
+  --paper: #11100E;
+  --surface: #171613;
+  --surface-raised: #1E1D19;
+  --tint: #23211C;
+  --tint-subtle: #1C1A16;
+  --ink: #EDE7DC;
+  --ink-soft: #ABA496;
+  --ink-faint: #726C61;
+  --rule: #292621;
+  --rule-subtle: #201E1A;
+  --rule-strong: #EDE7DC;
+  --accent: #C75844;
+  --accent-wash: #2B1814;
+  --ok: #8FAA85;
+  --warn: #D6A451;
+  --radius: 6px;
+  --shadow-spatial-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-spatial: 0 4px 20px -2px rgba(0, 0, 0, 0.4), 0 2px 6px -1px rgba(0, 0, 0, 0.2);
+  --shadow-spatial-lg: 0 16px 36px -4px rgba(0, 0, 0, 0.6), 0 6px 16px -2px rgba(0, 0, 0, 0.3);
 }
 
 /* ── Base ────────────────────────────────────────────────────── */
@@ -720,7 +733,7 @@ table th {
   }
 }
 
-/* ── Modern Editorial Application Shell ───────────────────────── */
+/* ── Modern Editorial Spatial Application Shell ───────────────────────── */
 .app-shell {
   display: flex;
   min-height: 100vh;
@@ -729,12 +742,12 @@ table th {
 }
 
 .app-sidebar {
-  width: 260px;
+  width: 280px;
   background-color: var(--surface);
   border-right: 1px solid var(--rule);
   display: flex;
   flex-direction: column;
-  transition: width 180ms ease-out, transform 180ms ease-out;
+  transition: width 200ms cubic-bezier(0.16, 1, 0.3, 1), transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
   position: sticky;
   top: 0;
   height: 100vh;
@@ -744,11 +757,11 @@ table th {
 }
 
 .app-sidebar.collapsed {
-  width: 72px;
+  width: 80px;
 }
 
 .app-sidebar-header {
-  height: 64px;
+  height: 60px;
   padding: 0 16px;
   border-bottom: 1px solid var(--rule);
   display: flex;
@@ -760,7 +773,7 @@ table th {
 .sidebar-brand {
   display: flex;
   align-items: baseline;
-  gap: 4px;
+  gap: 6px;
   text-decoration: none;
   color: var(--ink);
   overflow: hidden;
@@ -772,16 +785,16 @@ table th {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .sidebar-group-title {
   font-family: var(--font-sans);
   font-size: 10px;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-faint);
-  padding: 12px 10px 4px 10px;
+  padding: 12px 12px 4px 12px;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -792,14 +805,14 @@ table th {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 10px;
-  border-radius: 2px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
   color: var(--ink-soft);
   text-decoration: none;
   font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 500;
-  transition: color 120ms ease, background-color 120ms ease;
+  transition: all 140ms ease;
   position: relative;
   white-space: nowrap;
 }
@@ -807,6 +820,7 @@ table th {
 .sidebar-item:hover {
   color: var(--ink);
   background-color: var(--tint);
+  transform: translateX(2px);
 }
 
 .sidebar-item.active {
@@ -819,9 +833,10 @@ table th {
   content: "";
   position: absolute;
   left: 0;
-  top: 6px;
-  bottom: 6px;
-  width: 2px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
   background-color: var(--accent);
 }
 
@@ -835,7 +850,7 @@ table th {
 }
 
 .sidebar-footer {
-  padding: 12px 14px;
+  padding: 12px 16px;
   border-top: 1px solid var(--rule);
   background-color: var(--surface);
   flex-shrink: 0;
@@ -850,7 +865,7 @@ table th {
 }
 
 .app-topbar {
-  height: 64px;
+  height: 60px;
   border-bottom: 1px solid var(--rule);
   background-color: var(--paper);
   display: flex;
@@ -860,32 +875,44 @@ table th {
   position: sticky;
   top: 0;
   z-index: 30;
+  backdrop-filter: blur(8px);
 }
 
-/* ── Editorial Badges & Cards ─────────────────────────────────── */
+/* ── Spatial Editorial Badges & Cards ─────────────────────────── */
 .editorial-card {
   background: var(--surface);
   border: 1px solid var(--rule);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 20px;
-  transition: border-color 150ms ease;
+  box-shadow: var(--shadow-spatial-sm);
+  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
 }
 
 .editorial-card:hover {
   border-color: var(--ink-soft);
+  box-shadow: var(--shadow-spatial);
+}
+
+.editorial-card-raised {
+  background: var(--surface-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow-spatial);
 }
 
 .editorial-tag {
   font-family: var(--font-sans);
-  font-size: 10px;
+  font-size: 10.5px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 2px;
+  padding: 3px 8px;
+  border-radius: 4px;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   border: 1px solid transparent;
 }
 
@@ -902,84 +929,101 @@ table th {
 }
 
 .editorial-tag-ok {
-  background: rgba(63, 91, 58, 0.1);
+  background: rgba(63, 91, 58, 0.12);
   color: var(--ok);
   border-color: var(--ok);
 }
 
 .editorial-tag-warn {
-  background: rgba(154, 107, 28, 0.1);
+  background: rgba(154, 107, 28, 0.12);
   color: var(--warn);
   border-color: var(--warn);
 }
 
-/* ── Kanban Board Styles ─────────────────────────────────────── */
+/* ── Spatial Kanban Board ─────────────────────────────────────── */
 .kanban-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
   align-items: start;
 }
 
 .kanban-column {
   background: var(--surface);
   border: 1px solid var(--rule);
-  border-radius: 2px;
-  padding: 16px;
+  border-radius: var(--radius);
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  min-height: 420px;
+  gap: 16px;
+  min-height: 520px;
+  box-shadow: var(--shadow-spatial-sm);
 }
 
 .kanban-column-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 8px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--rule);
 }
 
 .kanban-card {
-  background: var(--paper);
+  background: var(--surface-raised);
   border: 1px solid var(--rule);
-  border-radius: 2px;
-  padding: 12px;
+  border-radius: var(--radius);
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   cursor: pointer;
-  transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+  box-shadow: var(--shadow-spatial-sm);
+  transition: all 160ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .kanban-card:hover {
   border-color: var(--ink);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-spatial);
 }
 
-/* ── Tabs ─────────────────────────────────────────────────────── */
+/* ── Spatial Tabs ─────────────────────────────────────────────────────── */
 .editorial-tabs {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   border-bottom: 1px solid var(--rule);
-  margin-bottom: 20px;
+  margin-bottom: 28px;
+  padding-bottom: 2px;
 }
 
 .editorial-tab {
   font-family: var(--font-sans);
-  font-size: 12px;
-  letter-spacing: 0.1em;
+  font-size: 13px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   font-weight: 500;
   color: var(--ink-soft);
   background: transparent;
   border: none;
-  padding: 10px 16px;
+  padding: 12px 20px;
   border-bottom: 2px solid transparent;
   cursor: pointer;
-  transition: color 120ms ease, border-color 120ms ease;
+  transition: all 140ms ease;
   margin-bottom: -1px;
+  border-radius: 4px 4px 0 0;
+}
+
+.editorial-tab:hover {
+  color: var(--ink);
+  background-color: var(--tint);
+}
+
+.editorial-tab.active {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+  background-color: var(--surface);
 }
 
 .editorial-tab:hover {

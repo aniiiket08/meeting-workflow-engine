@@ -123,14 +123,14 @@ export const MemoryChat: React.FC = () => {
         )}
 
         {/* ── Results Feed ────────────────────────────────────── */}
-        <div className="space-y-6">
+        <div className="space-y-8">
           {history.length === 0 && !loading && (
-            <div className="border border-dashed border-rule p-8 text-center bg-surface/30">
-              <BookOpen size={28} className="mx-auto text-ink-faint mb-2 opacity-60" />
-              <p className="font-serif italic text-ink-soft text-15">
+            <div className="editorial-card p-8 text-center bg-surface/30">
+              <BookOpen size={32} className="mx-auto text-ink-faint mb-3 opacity-60" />
+              <p className="font-serif italic text-ink-soft text-16">
                 No past memory queries in this session.
               </p>
-              <p className="font-sans text-12 text-ink-faint mt-1">
+              <p className="font-sans text-12 text-ink-faint mt-2 max-w-md mx-auto">
                 Type a question above to retrieve cited decisions, discussion quotes, and verified meeting minutes.
               </p>
             </div>
@@ -139,12 +139,12 @@ export const MemoryChat: React.FC = () => {
           {history.map((item, idx) => (
             <article
               key={idx}
-              className="editorial-card space-y-4 fade-section"
+              className="editorial-card-raised p-6 space-y-5 fade-section"
               style={{ animationDelay: `${idx * 40}ms` }}
             >
               {/* Question */}
               <div className="border-b border-rule pb-3 flex items-start gap-3">
-                <span className="monogram w-6 h-6 rounded-sm text-9 bg-tint text-ink border border-rule">
+                <span className="monogram w-7 h-7 rounded text-11 bg-tint text-ink border border-rule font-serif shrink-0">
                   Q
                 </span>
                 <h3 className="font-serif text-18 font-normal text-ink leading-snug">
@@ -153,48 +153,48 @@ export const MemoryChat: React.FC = () => {
               </div>
 
               {/* Answer */}
-              <div className="pl-9">
+              <div className="pl-10">
                 <div className="font-serif text-15 text-ink leading-relaxed">
                   {item.answer}
                 </div>
 
                 {/* Citations & Evidence */}
                 {item.citations && item.citations.length > 0 && (
-                  <div className="mt-4 pt-3 border-t border-rule space-y-2">
-                    <span className="label text-ink-faint block">
+                  <div className="mt-6 pt-5 border-t border-rule space-y-3">
+                    <span className="label text-ink-faint block text-11">
                       Cited Meeting Sources ({item.citations.length})
                     </span>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
                       {item.citations.map((c, cIdx) => (
                         <div
                           key={cIdx}
-                          className="p-3 bg-paper border border-rule rounded-sm text-12 flex flex-col justify-between"
+                          className="p-5 bg-paper border border-rule rounded text-13 flex flex-col justify-between shadow-subtle hover:border-ink transition-colors"
                         >
                           <div>
-                            <div className="flex items-center justify-between mb-1.5">
-                              <span className="font-serif font-medium text-ink truncate">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-serif font-medium text-ink truncate text-14">
                                 {c.title}
                               </span>
-                              <span className="font-mono text-10 text-ink-faint shrink-0 ml-2">
+                              <span className="font-mono text-11 text-ink-faint shrink-0 ml-2">
                                 {c.date}
                               </span>
                             </div>
-                            <blockquote className="quote-block text-12 text-ink-soft my-1">
+                            <blockquote className="quote-block text-13 text-ink-soft my-2 py-1">
                               "{c.snippet}"
                             </blockquote>
                           </div>
 
-                          <div className="mt-2 pt-2 border-t border-rule/50 flex items-center justify-between">
-                            <span className="font-mono text-10 text-ink-faint">
+                          <div className="mt-3 pt-3 border-t border-rule/50 flex items-center justify-between">
+                            <span className="font-mono text-11 text-ink-faint">
                               Meeting #{c.meeting_id}
                             </span>
                             <Link
                               to={`/meetings/${c.meeting_id}`}
-                              className="text-11 font-sans text-accent hover:underline flex items-center gap-1"
+                              className="text-12 font-sans text-accent hover:underline flex items-center gap-1 font-medium"
                             >
                               <span>View Minutes</span>
-                              <ExternalLink size={11} />
+                              <ExternalLink size={12} />
                             </Link>
                           </div>
                         </div>

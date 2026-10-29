@@ -145,7 +145,7 @@ class LLMService:
                 ) from err2
 
     def _extract_json_substring(self, text: str) -> str:
-        """Extract valid JSON from markdown code blocks or text."""
+        """Extract valid JSON from markdown code blocks or surrounding text."""
         text = text.strip()
         if text.startswith("```"):
             lines = text.splitlines()
@@ -154,6 +154,27 @@ class LLMService:
             if lines and lines[-1].startswith("```"):
                 lines = lines[:-1]
             text = "\n".join(lines).strip()
+
+        # If wrapped in markdown json block without leading ```
+        if "```json" in text:
+            start_idx = text.find("```json") + len("```json")
+            end_idx = text.find("```", start_idx)
+            if end_idx != -1:
+                return text[start_idx:end_idx].strip()
+            return text[start_idx:].strip()
+
+        # Look for outermost matching JSON object or array braces
+        obj_start = text.find("{")
+        arr_start = text.find("[")
+        if obj_start != -1 and (arr_start == -1 or obj_start < arr_start):
+            obj_end = text.rfind("}")
+            if obj_end != -1 and obj_end > obj_start:
+                return text[obj_start : obj_end + 1].strip()
+        elif arr_start != -1:
+            arr_end = text.rfind("]")
+            if arr_end != -1 and arr_end > arr_start:
+                return text[arr_start : arr_end + 1].strip()
+
         return text
 
 llm_service = LLMService()

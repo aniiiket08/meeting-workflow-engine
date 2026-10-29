@@ -279,30 +279,30 @@ export const ActionTracker: React.FC = () => {
               <table className="w-full text-left text-13 border-collapse">
                 <thead>
                   <tr className="border-b border-rule-strong bg-surface font-sans text-11 uppercase tracking-wider text-ink-soft">
-                    <th className="py-3 px-4 font-medium">Task Description</th>
-                    <th className="py-3 px-4 font-medium">Owner</th>
-                    <th className="py-3 px-4 font-medium">Due Date</th>
-                    <th className="py-3 px-4 font-medium">Priority</th>
-                    <th className="py-3 px-4 font-medium">Status</th>
-                    <th className="py-3 px-4 font-medium text-right">Grounding</th>
+                    <th className="py-4 px-6 font-medium">Task Description</th>
+                    <th className="py-4 px-6 font-medium">Owner</th>
+                    <th className="py-4 px-6 font-medium">Due Date</th>
+                    <th className="py-4 px-6 font-medium">Priority</th>
+                    <th className="py-4 px-6 font-medium">Status</th>
+                    <th className="py-4 px-6 font-medium text-right">Grounding</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-rule font-sans">
                   {filteredItems.map((item) => (
                     <tr key={item.id} className="hover:bg-tint/40 transition-colors">
-                      <td className="py-3 px-4 font-serif text-ink">
-                        <div className="font-medium">{item.description}</div>
-                        <div className="font-mono text-10 text-ink-faint mt-0.5">
+                      <td className="py-5 px-6 font-serif text-ink">
+                        <div className="font-medium text-15 leading-relaxed">{item.description}</div>
+                        <div className="font-mono text-11 text-ink-faint mt-1">
                           From <Link to={`/meetings/${item.meeting_id}`} className="hover:underline">Meeting #{item.meeting_id}</Link>
                         </div>
                       </td>
 
-                      <td className="py-3 px-4 text-12">
+                      <td className="py-5 px-6 text-13">
                         {canAssign ? (
                           <select
                             value={item.owner_id || ""}
                             onChange={(e) => handleAssigneeChange(item.id, Number(e.target.value))}
-                            className="bg-transparent border-b border-rule text-12 font-sans py-1 outline-none text-ink cursor-pointer focus:border-ink"
+                            className="bg-transparent border-b border-rule text-13 font-sans py-1.5 outline-none text-ink cursor-pointer focus:border-ink"
                           >
                             <option value="">{item.owner_name || "Unassigned"}</option>
                             {members.map((m) => (
@@ -318,7 +318,7 @@ export const ActionTracker: React.FC = () => {
                         )}
                       </td>
 
-                      <td className="py-3 px-4 font-mono text-12 text-ink-soft">
+                      <td className="py-5 px-6 font-mono text-13 text-ink-soft">
                         {formatDate(item.due_date)}
                       </td>
 
@@ -382,39 +382,41 @@ export const ActionTracker: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className="space-y-3 flex-1 overflow-y-auto">
+                  <div className="space-y-4 flex-1 overflow-y-auto">
                     {colItems.map((item) => (
                       <div
                         key={item.id}
-                        className="kanban-card"
+                        className="kanban-card p-5"
                         onClick={() => item.source_quote && setInspectedQuote(item)}
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="font-serif text-13 font-medium text-ink leading-snug">
+                        <div className="flex items-start justify-between gap-3">
+                          <span className="font-serif text-15 font-medium text-ink leading-relaxed">
                             {item.description}
                           </span>
-                          {priorityBadge(item.priority)}
+                          <div className="shrink-0">{priorityBadge(item.priority)}</div>
                         </div>
 
-                        <div className="flex items-center justify-between text-11 font-mono text-ink-faint pt-1 border-t border-rule/50">
-                          <span>{formatDate(item.due_date)}</span>
-                          <span className="truncate max-w-[120px]">
+                        <div className="flex items-center justify-between text-12 font-mono text-ink-faint pt-3 border-t border-rule/50">
+                          <span className="flex items-center gap-1">
+                            Due: {formatDate(item.due_date)}
+                          </span>
+                          <span className="truncate max-w-[140px] text-ink-soft font-sans font-medium">
                             {item.owner_name || "Unassigned"}
                           </span>
                         </div>
 
                         {/* Status switcher */}
                         <div
-                          className="pt-2 flex items-center justify-between text-10 font-sans"
+                          className="pt-2.5 flex items-center justify-between text-11 font-sans border-t border-rule/30"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <span className="text-ink-faint">Move to:</span>
-                          <div className="flex gap-1">
+                          <span className="text-ink-faint">Move stage:</span>
+                          <div className="flex gap-1.5">
                             {columnStatus !== "pending" && (
                               <button
                                 type="button"
                                 onClick={() => handleStatusChange(item.id, "pending")}
-                                className="px-1.5 py-0.5 border border-rule hover:border-ink rounded-sm text-ink-soft"
+                                className="px-2 py-0.5 border border-rule hover:border-ink rounded text-ink-soft hover:text-ink transition-colors"
                               >
                                 Pending
                               </button>
@@ -423,7 +425,7 @@ export const ActionTracker: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => handleStatusChange(item.id, "in_progress")}
-                                className="px-1.5 py-0.5 border border-rule hover:border-ink rounded-sm text-ink-soft"
+                                className="px-2 py-0.5 border border-rule hover:border-ink rounded text-ink-soft hover:text-ink transition-colors"
                               >
                                 Active
                               </button>

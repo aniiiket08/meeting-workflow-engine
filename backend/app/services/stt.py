@@ -10,6 +10,30 @@ from app.observability.tracer import record_tool_call, trace_agent
 
 logger = logging.getLogger("meeting_organizer")
 
+_SUPPORTED_EXTENSIONS = {".wav", ".mp3", ".m4a", ".ogg", ".flac", ".webm", ".mp4", ".wma"}
+
+# Module-level cache so the model is loaded only once across requests.
+_cached_model = None
+
+
+def _get_whisper_model():
+    """Load faster-whisper model once and cache it for reuse."""
+    global _cached_model
+    if _cached_model is not None:
+        return _cached_model
+    try:
+        from faster_whisper import WhisperModel
+        _cached_model = WhisperModel("tiny", device="cpu", compute_type="int8")
+        return _cached_model
+    except Exception as exc:
+        logger.exception("Could not load Whisper model")
+        raise ToolError(
+            "Speech transcription model failed to load. "
+            "Ensure faster-whisper and its dependencies are installed.",
+            tool_name="faster-whisper",
+        ) from exc
+
+
 class STTService:
     @trace_agent(agent_name="transcription_agent", sensitive=True)
     def transcribe(self, audio_bytes: bytes, filename: str = "meeting_audio.wav") -> dict[str, Any]:
@@ -17,16 +41,21 @@ class STTService:
         if not audio_bytes:
             raise ValidationFailed("Uploaded audio file is empty.")
 
-        suffix = Path(filename).suffix or ".wav"
+        suffix = Path(filename).suffix.lower() or ".wav"
+        if suffix not in _SUPPORTED_EXTENSIONS:
+            raise ValidationFailed(
+                f"Unsupported audio format '{suffix}'. "
+                f"Supported formats: {', '.join(sorted(_SUPPORTED_EXTENSIONS))}."
+            )
+
         temp_path: str | None = None
         try:
-            from faster_whisper import WhisperModel
+            model = _get_whisper_model()
 
             with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as audio_file:
                 audio_file.write(audio_bytes)
                 temp_path = audio_file.name
 
-            model = WhisperModel("tiny", device="cpu", compute_type="int8")
             segments, info = model.transcribe(temp_path, beam_size=5)
             timestamped_lines = []
             for segment in segments:

@@ -83,6 +83,7 @@ export const NewMeeting: React.FC = () => {
   const [roomsLoading, setRoomsLoading]       = useState(false);
   const [availableRooms, setAvailableRooms]   = useState<RoomAvailability[]>([]);
   const [selectedRoomId, setSelectedRoomId]   = useState<number | null>(null);
+  const [isOnlineMeeting, setIsOnlineMeeting] = useState<boolean>(false);
   const [roomError, setRoomError]             = useState<string | null>(null);
   // Equipment filter local to the room picker (can differ from equipmentNeeded)
   const [roomEquipFilter, setRoomEquipFilter] = useState<string[]>([]);
@@ -173,6 +174,7 @@ export const NewMeeting: React.FC = () => {
     if (!createdMeetingId) return;
     setStagedSlot(slot);
     setSelectedRoomId(null);
+    setIsOnlineMeeting(false);
     setAvailableRooms([]);
     setRoomError(null);
     setRoomsLoading(true);
@@ -192,9 +194,12 @@ export const NewMeeting: React.FC = () => {
         `/rooms/availability?${params.toString()}`,
       );
       setAvailableRooms(res.rooms);
-      // Pre-select best fit
+      // Pre-select best fit if available
       if (res.best_fit_id !== null) {
         setSelectedRoomId(res.best_fit_id);
+      } else {
+        // Fallback to Zoom if no physical room fits
+        setIsOnlineMeeting(true);
       }
     } catch (err: any) {
       setRoomError(err.message || "Could not load room availability.");
@@ -214,7 +219,8 @@ export const NewMeeting: React.FC = () => {
       await api.post(`/meetings/${createdMeetingId}/confirm`, {
         selected_start_time: stagedSlot.start_time,
         selected_end_time: stagedSlot.end_time,
-        room_id: selectedRoomId ?? null,
+        room_id: isOnlineMeeting ? null : (selectedRoomId ?? null),
+        is_online: isOnlineMeeting,
       });
       navigate("/meetings");
     } catch (err: any) {
@@ -279,15 +285,17 @@ export const NewMeeting: React.FC = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
           {/* ── Left: form ───────────────────────────────────── */}
           <div className="lg:col-span-5 fade-section">
-            <div className="border-t border-rule-strong pt-3 mb-6">
-              <span className="label text-soft">01 — Request Details</span>
-            </div>
+            <div className="editorial-card-raised p-6 space-y-5">
+              <div className="border-b border-rule pb-3 mb-1">
+                <span className="label text-soft text-10">01 — Request Details</span>
+                <h3 className="font-serif text-18 text-ink mt-0.5">Configure Meeting</h3>
+              </div>
 
-            <form onSubmit={handleCreate} className="space-y-8" noValidate>
+              <form onSubmit={handleCreate} className="space-y-5" noValidate>
               <div className="field-float">
                 <label htmlFor="nm-title" className="field-label">Meeting title</label>
                 <input
@@ -509,21 +517,25 @@ export const NewMeeting: React.FC = () => {
                 </div>
               </fieldset>
 
-              <button type="submit" disabled={loading} className="w-full btn-primary">
+              <button type="submit" disabled={loading} className="w-full btn-primary py-3 text-14">
                 {loading ? "Finding slots…" : "Calculate best slots"}
               </button>
             </form>
+            </div>
           </div>
 
           {/* ── Right: slots + room picker ────────────────────── */}
-          <div className="lg:col-span-7 fade-section space-y-10">
+          <div className="lg:col-span-7 fade-section space-y-6">
 
             {/* ── Ranked slots ─────────────────────────────── */}
-            <div>
-              <div className="border-t border-rule-strong pt-3 mb-6 flex justify-between items-center">
-                <span className="label text-soft">02 — Ranked available slots</span>
+            <div className="editorial-card-raised p-6 space-y-4">
+              <div className="border-b border-rule pb-3 flex justify-between items-center">
+                <div>
+                  <span className="label text-soft text-10">02 — Ranked Available Slots</span>
+                  <h3 className="font-serif text-18 text-ink mt-0.5">Suggested Time Windows</h3>
+                </div>
                 {rankedSlots.length > 0 && (
-                  <span className="font-mono text-11 text-faint">
+                  <span className="font-mono text-12 text-ink-faint">
                     {rankedSlots.length} options
                   </span>
                 )}
@@ -531,19 +543,19 @@ export const NewMeeting: React.FC = () => {
 
               {rankedSlots.length === 0 ? (
                 <div className="border-t border-rule">
-                  <div className="empty-ghost py-10">
+                  <div className="empty-ghost py-8">
                     {[1, 2, 3].map((i) => (
                       <div
                         key={i}
                         style={{
-                          height: 64,
+                          height: 52,
                           borderBottom: "1px solid var(--rule)",
                           opacity: 1 - i * 0.25,
                         }}
                       />
                     ))}
                   </div>
-                  <p className="font-serif italic text-soft text-15 mt-4">
+                  <p className="font-serif italic text-soft text-14 mt-3">
                     Fill in the meeting details and calculate best slots to see ranked options.
                   </p>
                 </div>
@@ -564,10 +576,13 @@ export const NewMeeting: React.FC = () => {
 
             {/* ── Room picker (shown after a slot is staged) ─── */}
             {stagedSlot && (
-              <div>
-                <div className="border-t border-rule-strong pt-3 mb-4 flex items-baseline justify-between">
-                  <span className="label text-soft">03 — Room</span>
-                  <span className="font-mono text-11 text-faint">
+              <div className="editorial-card-raised p-6 space-y-4">
+                <div className="border-b border-rule pb-3 flex items-baseline justify-between">
+                  <div>
+                    <span className="label text-soft text-10">03 — Facility or Online Setup</span>
+                    <h3 className="font-serif text-18 text-ink mt-0.5">Select Venue or Virtual Mode</h3>
+                  </div>
+                  <span className="font-mono text-12 text-ink-faint">
                     {stagedSlot.start_time.slice(11, 16)}–{stagedSlot.end_time.slice(11, 16)}
                   </span>
                 </div>
@@ -721,42 +736,117 @@ export const NewMeeting: React.FC = () => {
                           </li>
                         );
                       })}
+
+                      {/* Zoom Online Meeting option */}
+                      <li
+                        className="border-b border-rule py-4 px-1 flex items-start gap-4 cursor-pointer"
+                        style={{
+                          background: isOnlineMeeting ? "rgba(43, 114, 186, 0.05)" : "transparent",
+                        }}
+                        onClick={() => {
+                          setIsOnlineMeeting(true);
+                          setSelectedRoomId(null);
+                        }}
+                      >
+                        <span
+                          aria-hidden="true"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: 16,
+                            height: 16,
+                            borderRadius: "50%",
+                            border: isOnlineMeeting
+                              ? "2px solid #2B72BA"
+                              : "1px solid var(--rule-strong)",
+                            flexShrink: 0,
+                            marginTop: 3,
+                          }}
+                        >
+                          {isOnlineMeeting && (
+                            <span
+                              style={{
+                                width: 7,
+                                height: 7,
+                                borderRadius: "50%",
+                                background: "#2B72BA",
+                                display: "block",
+                              }}
+                            />
+                          )}
+                        </span>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                            <span className="font-serif text-15 font-medium" style={{ color: "#2B72BA" }}>
+                              Online Meeting (Zoom Video Conference)
+                            </span>
+                            <span className="font-mono text-11 text-soft shrink-0">
+                              Unlimited remote seats
+                            </span>
+                          </div>
+                          <p className="mt-1 text-12 font-sans text-soft">
+                            MCP-powered Zoom meeting. Automatically creates a secure video room with join link.
+                          </p>
+                          {isOnlineMeeting && (
+                            <p className="mt-1.5 text-11 font-sans" style={{ color: "#2B72BA" }}>
+                              ✓ Zoom link will be created and shared with all participants
+                            </p>
+                          )}
+                        </div>
+
+                        <span
+                          className="label shrink-0 mt-0.5"
+                          style={{ color: "#2B72BA", border: "1px solid #2B72BA", padding: "1px 6px", borderRadius: 4 }}
+                        >
+                          Zoom MCP
+                        </span>
+                      </li>
                     </ul>
 
-                    {/* No room available message */}
+                    {/* Offline room unavailable banner if applicable */}
                     {!anyAvailableRoom && (
-                      <p
-                        className="mt-4 font-serif italic text-15"
-                        style={{ color: "var(--accent)" }}
+                      <div
+                        className="mt-4 p-3 border rounded text-13"
+                        style={{ borderColor: "#2B72BA", background: "rgba(43, 114, 186, 0.08)", color: "var(--ink)" }}
                         role="alert"
                       >
-                        No room is available for this slot. Try another time.
-                      </p>
+                        <strong>No physical room matches your headcount/equipment.</strong>
+                        <p className="mt-1 text-12">
+                          You can proceed seamlessly by choosing <strong>Online Meeting (Zoom Video Conference)</strong> above.
+                        </p>
+                      </div>
                     )}
 
                     {/* Confirm button */}
-                    {anyAvailableRoom && (
-                      <div className="mt-6">
-                        {selectedRoomEntry && (
-                          <p className="text-13 text-soft mb-3">
-                            <span className="font-serif text-ink">{selectedRoomEntry.name}</span>
-                            {" "}&middot; {selectedRoomEntry.capacity} seats
-                          </p>
-                        )}
-                        <button
-                          onClick={handleConfirm}
-                          disabled={bookingLoading || selectedRoomId === null}
-                          className="btn-primary disabled:opacity-50"
-                          style={{ minWidth: 220 }}
-                        >
-                          {bookingLoading
-                            ? "Booking…"
-                            : selectedRoomId
-                            ? `Confirm and book ${selectedRoomEntry?.name ?? "room"}`
-                            : "Select a room to continue"}
-                        </button>
-                      </div>
-                    )}
+                    <div className="mt-6">
+                      {isOnlineMeeting ? (
+                        <p className="text-13 text-soft mb-3">
+                          <span className="font-serif text-ink" style={{ color: "#2B72BA" }}>Zoom Video Conference</span>
+                          {" "}&middot; Online Meeting
+                        </p>
+                      ) : selectedRoomEntry ? (
+                        <p className="text-13 text-soft mb-3">
+                          <span className="font-serif text-ink">{selectedRoomEntry.name}</span>
+                          {" "}&middot; {selectedRoomEntry.capacity} seats
+                        </p>
+                      ) : null}
+                      <button
+                        onClick={handleConfirm}
+                        disabled={bookingLoading || (!selectedRoomId && !isOnlineMeeting)}
+                        className="btn-primary disabled:opacity-50"
+                        style={{ minWidth: 240 }}
+                      >
+                        {bookingLoading
+                          ? "Scheduling…"
+                          : isOnlineMeeting
+                          ? "Confirm & Create Zoom Meeting"
+                          : selectedRoomId
+                          ? `Confirm and book ${selectedRoomEntry?.name ?? "room"}`
+                          : "Select a room or Zoom to continue"}
+                      </button>
+                    </div>
                   </>
                 )}
               </div>

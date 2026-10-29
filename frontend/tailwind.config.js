@@ -70,20 +70,28 @@ export default {
     },
     borderRadius: {
       none:    "0",
-      DEFAULT: "2px",
-      sm:      "2px",
+      DEFAULT: "4px",
+      sm:      "3px",
+      md:      "6px",
+      lg:      "8px",
+      xl:      "12px",
     },
     boxShadow: {
-      menu: "1px 1px 0 rgba(0,0,0,0.06)",
+      subtle: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+      spatial: "0 4px 20px -2px rgba(0, 0, 0, 0.06), 0 2px 6px -1px rgba(0, 0, 0, 0.04)",
+      "spatial-lg": "0 12px 32px -4px rgba(0, 0, 0, 0.10), 0 4px 12px -2px rgba(0, 0, 0, 0.06)",
+      menu: "0 4px 16px rgba(0, 0, 0, 0.08)",
     },
     extend: {
       spacing: {
         "72ch": "72ch",
         "68ch": "68ch",
+        "18": "4.5rem",
+        "22": "5.5rem",
       },
       maxWidth: {
-        content: "1280px",
-        reading: "72ch",
+        content: "1536px",
+        reading: "76ch",
       },
       keyframes: {
         "fade-up": {

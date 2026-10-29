@@ -206,38 +206,54 @@ export const Dashboard: React.FC = () => {
           </div>
         )}
 
-        {/* ── Key Metrics Strip ────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="editorial-card">
-            <span className="label text-ink-faint block mb-1">Meetings This Month</span>
-            <div className="font-serif text-32 text-ink">{meetingsThisMonth}</div>
-            <span className="font-mono text-10 text-ink-faint">Scheduled across faculty</span>
-          </div>
-
-          <div className="editorial-card">
-            <span className="label text-ink-faint block mb-1">Tasks Closed</span>
-            <div className="font-serif text-32 text-ok">{tasksOnTime}%</div>
-            <span className="font-mono text-10 text-ink-faint">On-time completion rate</span>
-          </div>
-
-          <div className="editorial-card">
-            <span className="label text-ink-faint block mb-1">Pending Approvals</span>
-            <div
-              className={`font-serif text-32 ${
-                waitingMeetings.length > 0 ? "text-warn" : "text-ink"
-              }`}
-            >
-              {waitingMeetings.length}
+        {/* ── Key Metrics Strip (Spatial elevated cards) ────────────────────── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="editorial-card-raised p-5 flex flex-col justify-between">
+            <div>
+              <span className="label text-ink-faint block mb-1.5 text-10">Meetings This Month</span>
+              <div className="font-serif text-ink tracking-tight text-32 sm:text-36 font-normal leading-none">{meetingsThisMonth}</div>
             </div>
-            <span className="font-mono text-10 text-ink-faint">Awaiting gate check</span>
+            <div className="font-mono text-11 text-ink-faint pt-3 border-t border-rule/60 mt-3">
+              Scheduled across faculty
+            </div>
           </div>
 
-          <div className="editorial-card">
-            <span className="label text-ink-faint block mb-1">Open Action Items</span>
-            <div className="font-serif text-32 text-ink">
-              {actions.filter((a) => a.status !== "completed").length}
+          <div className="editorial-card-raised p-5 flex flex-col justify-between">
+            <div>
+              <span className="label text-ink-faint block mb-1.5 text-10">Tasks Closed</span>
+              <div className="font-serif text-ok tracking-tight text-32 sm:text-36 font-normal leading-none">{tasksOnTime}%</div>
             </div>
-            <span className="font-mono text-10 text-ink-faint">Tracked commitments</span>
+            <div className="font-mono text-11 text-ink-faint pt-3 border-t border-rule/60 mt-3">
+              On-time resolution rate
+            </div>
+          </div>
+
+          <div className="editorial-card-raised p-5 flex flex-col justify-between">
+            <div>
+              <span className="label text-ink-faint block mb-1.5 text-10">Pending Approvals</span>
+              <div
+                className={`font-serif tracking-tight text-32 sm:text-36 font-normal leading-none ${
+                  waitingMeetings.length > 0 ? "text-warn" : "text-ink"
+                }`}
+              >
+                {waitingMeetings.length}
+              </div>
+            </div>
+            <div className="font-mono text-11 text-ink-faint pt-3 border-t border-rule/60 mt-3">
+              Awaiting gate validation
+            </div>
+          </div>
+
+          <div className="editorial-card-raised p-5 flex flex-col justify-between">
+            <div>
+              <span className="label text-ink-faint block mb-1.5 text-10">Open Action Items</span>
+              <div className="font-serif text-ink tracking-tight text-32 sm:text-36 font-normal leading-none">
+                {actions.filter((a) => a.status !== "completed").length}
+              </div>
+            </div>
+            <div className="font-mono text-11 text-ink-faint pt-3 border-t border-rule/60 mt-3">
+              Active commitments
+            </div>
           </div>
         </div>
 

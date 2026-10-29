@@ -3,7 +3,7 @@ from typing import Any
 
 from app.services.calendar_service import calendar_service
 
-
+# https://calendar.google.com/calendar/u/0/r
 def fetch_attendee_freebusy(emails: list[str]) -> dict[str, Any]:
     """MCP tool: Fetch free/busy intervals for attendee emails."""
     raw_busy = calendar_service.get_busy_slots(emails)

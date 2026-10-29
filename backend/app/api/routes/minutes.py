@@ -238,10 +238,10 @@ def approve_minutes(
     meeting_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(
-        require_roles(UserRole.CHAIRMAN)
+        require_roles(UserRole.CHAIRMAN, UserRole.PRINCIPAL)
     ),
 ):
-    """Approve minutes, locking and hashing them."""
+    """Approve minutes, locking and hashing them (Chairman or Principal only)."""
     minutes = db.query(Minutes).filter(Minutes.meeting_id == meeting_id).order_by(Minutes.version.desc()).first()
     if not minutes:
         raise NotFound(entity="Minutes", identifier=meeting_id)
@@ -264,6 +264,13 @@ def approve_minutes(
         },
         config={"configurable": {"db": db}},
     )
+
+    # Index newly approved meeting into MemoryStore for Memory Chat retrieval
+    try:
+        from app.memory.vector_store import memory_store
+        memory_store.sync_from_database(db)
+    except Exception:
+        pass
     return {
         "status": "approved",
         "minutes_id": minutes.id,

@@ -103,30 +103,38 @@ export const TraceViewer: React.FC = () => {
       }
     >
       <div className="space-y-6">
-        {/* Metric tiles */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="editorial-card">
-            <span className="label text-ink-faint block mb-1">Total Executions</span>
-            <div className="font-serif text-28 text-ink">{traces.length}</div>
-            <span className="font-mono text-10 text-ink-faint">Logged agent runs</span>
+        {/* Metric tiles (Spatial elevated cards) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="editorial-card-raised p-6 flex flex-col justify-between">
+            <div>
+              <span className="label text-ink-faint block mb-2 text-11">Total Executions</span>
+              <div className="font-serif text-36 sm:text-44 text-ink leading-tight font-normal">{traces.length}</div>
+            </div>
+            <span className="font-mono text-11 text-ink-faint pt-3 border-t border-rule/60 mt-3">Logged agent runs</span>
           </div>
 
-          <div className="editorial-card">
-            <span className="label text-ink-faint block mb-1">Average Latency</span>
-            <div className="font-serif text-28 text-ink">{avgLatency} ms</div>
-            <span className="font-mono text-10 text-ink-faint">End-to-end response time</span>
+          <div className="editorial-card-raised p-6 flex flex-col justify-between">
+            <div>
+              <span className="label text-ink-faint block mb-2 text-11">Average Latency</span>
+              <div className="font-serif text-36 sm:text-44 text-ink leading-tight font-normal">{avgLatency} ms</div>
+            </div>
+            <span className="font-mono text-11 text-ink-faint pt-3 border-t border-rule/60 mt-3">End-to-end response time</span>
           </div>
 
-          <div className="editorial-card">
-            <span className="label text-ink-faint block mb-1">Model Tokens</span>
-            <div className="font-serif text-28 text-ink">{totalTokens}</div>
-            <span className="font-mono text-10 text-ink-faint">Cumulative usage</span>
+          <div className="editorial-card-raised p-6 flex flex-col justify-between">
+            <div>
+              <span className="label text-ink-faint block mb-2 text-11">Model Tokens</span>
+              <div className="font-serif text-36 sm:text-44 text-ink leading-tight font-normal">{totalTokens}</div>
+            </div>
+            <span className="font-mono text-11 text-ink-faint pt-3 border-t border-rule/60 mt-3">Cumulative usage</span>
           </div>
 
-          <div className="editorial-card">
-            <span className="label text-ink-faint block mb-1">Active Agents</span>
-            <div className="font-serif text-28 text-ok">{agentsList.length}</div>
-            <span className="font-mono text-10 text-ink-faint">Specialized roles</span>
+          <div className="editorial-card-raised p-6 flex flex-col justify-between">
+            <div>
+              <span className="label text-ink-faint block mb-2 text-11">Active Agents</span>
+              <div className="font-serif text-36 sm:text-44 text-ok leading-tight font-normal">{agentsList.length}</div>
+            </div>
+            <span className="font-mono text-11 text-ink-faint pt-3 border-t border-rule/60 mt-3">Specialized roles</span>
           </div>
         </div>
 

@@ -24,8 +24,25 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    const message = errorData?.error?.message || errorData?.detail || "An unexpected error occurred.";
-    throw new Error(message);
+    // AppError shape: { error: { message } }, HTTPException: { detail: string | object[] }
+    let message = errorData?.error?.message;
+    if (!message) {
+      const detail = errorData?.detail;
+      if (typeof detail === "string") {
+        message = detail;
+      } else if (Array.isArray(detail)) {
+        // Pydantic validation errors: [{"msg": "...", "loc": [...]}]
+        message = detail
+          .map((e: any) => {
+            const field = Array.isArray(e.loc) ? e.loc.filter((s: any) => s !== "body").join(".") : "";
+            return field ? `${field}: ${e.msg}` : e.msg;
+          })
+          .join("; ");
+      } else if (detail && typeof detail === "object") {
+        message = (detail as any).message || JSON.stringify(detail);
+      }
+    }
+    throw new Error(message || `Request failed (${response.status})`);
   }
 
   return response.json();

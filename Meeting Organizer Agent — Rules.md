@@ -220,12 +220,13 @@ Dark theme: `--paper #131210`, `--ink #ECE7DD`, same accent lightened to `#C4533
 
 ### Human roles
 
-| Role | Can |
-| --- | --- |
-| Coordinator | Create meetings, edit drafts, request changes |
-| Approver | Approve or reject minutes and agendas |
-| Attendee | View their meetings, update own action status |
-| Admin | Manage rooms, users, view audit log |
+| Role | Who | Can |
+| --- | --- | --- |
+| **Chairman** | Department/committee chair | Approve or reject agendas and minutes; full meeting management |
+| **Principal** | Head of institution | Approve or reject agendas and minutes; full meeting management |
+| **HOD** | Head of Department | Create and manage meetings, edit drafts, request changes |
+| **Teacher** | Faculty member | Create meetings they organise, upload transcripts, view own meetings |
+| **Student** | Student attendee | View meetings they are invited to, update own action item status |
 
 ---
 

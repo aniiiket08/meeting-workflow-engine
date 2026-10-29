@@ -55,9 +55,9 @@ _COMMITMENT_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"\bby\s+(?:friday|monday|tuesday|wednesday|thursday|saturday|sunday|end of|next week|eod|eow)\b", re.IGNORECASE),
 ]
 
-# Lines that are almost certainly NOT commitments (opening greetings, etc.)
 _NOISE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"^\s*\[\d{2}:\d{2}:\d{2}\]\s*(?:hi|hello|good (?:morning|afternoon|evening)|thank(?:s| you)|welcome|alright|okay|ok|sure|great|sounds good)\W*$", re.IGNORECASE),
+    re.compile(r"^\s*\[\d{2}:\d{2}:\d{2}\]\s*.*\?\s*(?:no|nope|not now|declined|skip|out of scope)\W*$", re.IGNORECASE),
 ]
 
 _TIMESTAMP_RE = re.compile(r"^\[?(\d{2}:\d{2}:\d{2})\]?\s*")

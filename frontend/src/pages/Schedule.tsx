@@ -536,7 +536,7 @@ export const Schedule: React.FC = () => {
               >
                 <colgroup>
                   {/* time column */}
-                  <col style={{ width: 96 }} />
+                  <col style={{ width: 120 }} />
                   {/* 6 day columns */}
                   {weekDates.map((_, i) => (
                     <col key={i} />
@@ -549,15 +549,15 @@ export const Schedule: React.FC = () => {
                     <th
                       scope="col"
                       style={{
-                        padding: "6px 8px",
+                        padding: "14px 16px",
                         borderBottom: "1px solid var(--rule-strong)",
                         textAlign: "left",
                         fontFamily: "var(--font-sans)",
-                        fontSize: 10,
-                        letterSpacing: "0.1em",
+                        fontSize: 11,
+                        letterSpacing: "0.12em",
                         textTransform: "uppercase",
                         color: "var(--ink-faint)",
-                        fontWeight: 500,
+                        fontWeight: 600,
                       }}
                     >
                       Time
@@ -569,19 +569,19 @@ export const Schedule: React.FC = () => {
                           key={i}
                           scope="col"
                           style={{
-                            padding: "6px 8px",
+                            padding: "14px 16px",
                             borderBottom: isToday
-                              ? "2px solid var(--accent)"
+                              ? "3px solid var(--accent)"
                               : "1px solid var(--rule-strong)",
                             textAlign: "left",
                             fontFamily: "var(--font-sans)",
-                            fontSize: 11,
+                            fontSize: 12,
                             letterSpacing: "0.08em",
                             textTransform: "uppercase",
                             color: isToday ? "var(--accent)" : "var(--ink-soft)",
                             fontWeight: isToday ? 600 : 500,
                             background: isToday
-                              ? "color-mix(in srgb, var(--accent) 5%, transparent)"
+                              ? "color-mix(in srgb, var(--accent) 6%, transparent)"
                               : "transparent",
                           }}
                         >
@@ -589,7 +589,7 @@ export const Schedule: React.FC = () => {
                           <span
                             style={{
                               fontFamily: "var(--font-mono)",
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: 400,
                               letterSpacing: 0,
                               color: isToday ? "var(--accent)" : "var(--ink-faint)",
@@ -610,10 +610,10 @@ export const Schedule: React.FC = () => {
                       {/* Time label */}
                       <td
                         style={{
-                          padding: "8px 8px",
+                          padding: "16px 16px",
                           borderBottom: "1px solid var(--rule)",
                           fontFamily: "var(--font-mono)",
-                          fontSize: 10,
+                          fontSize: 11.5,
                           color: "var(--ink-faint)",
                           whiteSpace: "nowrap",
                           verticalAlign: "middle",
@@ -634,12 +634,13 @@ export const Schedule: React.FC = () => {
                           participantKey === "everyone" && isAvail && si !== 4;
 
                         const style: React.CSSProperties = {
-                          padding: "6px 8px",
+                          padding: "14px 16px",
                           borderBottom: "1px solid var(--rule)",
                           borderLeft: isToday
-                            ? "2px solid color-mix(in srgb, var(--accent) 30%, transparent)"
+                            ? "2px solid color-mix(in srgb, var(--accent) 40%, transparent)"
                             : "1px solid var(--rule)",
                           verticalAlign: "top",
+                          minHeight: 64,
                           ...(showAvailHighlight ? availCellStyle() : cellStyle(entry.kind)),
                         };
 
@@ -648,9 +649,9 @@ export const Schedule: React.FC = () => {
                             <span
                               style={{
                                 fontFamily: "var(--font-sans)",
-                                fontSize: 11,
+                                fontSize: 12.5,
                                 fontWeight: 500,
-                                lineHeight: 1.3,
+                                lineHeight: 1.4,
                                 display: "block",
                               }}
                             >

@@ -40,11 +40,11 @@ def run_scheduling_agent(
         now = datetime.now(timezone.utc)
         base_dt = (now + timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
 
-    # Fetch busy schedules
-    busy_map = calendar_service.get_busy_slots(attendee_emails)
+    # Fetch busy schedules (integrates mock calendar + environment weekly timetable)
+    busy_map = calendar_service.get_busy_slots(attendee_emails, target_date=base_dt)
     record_tool_call(
         "calendar_service.get_busy_slots",
-        {"attendee_count": len(attendee_emails)},
+        {"attendee_count": len(attendee_emails), "target_date": base_dt.isoformat()},
         {"busy_event_count": sum(len(events) for events in busy_map.values())},
     )
     schedules = [

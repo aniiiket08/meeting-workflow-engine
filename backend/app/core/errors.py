@@ -56,7 +56,7 @@ class ValidationFailed(AppError):
         super().__init__(
             message=message,
             code="validation_failed",
-            http_status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            http_status=getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", 422),
             action="fix_input_data",
             details=details,
         )

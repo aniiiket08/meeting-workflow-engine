@@ -38,7 +38,7 @@ Read `rule.md` and `architecture.md` before every phase.
 1. Repo setup: folders per `architecture.md`, `pyproject.toml`, `.env.example`, `docker-compose.yml`, ruff, mypy.
 2. Config and logging (`config.py`, `core/logging.py`).
 3. Database: SQLAlchemy base, models for `users`, `rooms`, `audit_log`; Alembic first migration; seed script.
-4. Auth: JWT login, password hashing, role guard (`admin`, `coordinator`, `approver`, `attendee`).
+4. Auth: JWT login, password hashing, role guard (`chairman`, `principal`, `hod`, `teacher`, `student`).
 5. Error handling base: `AppError` classes and global handler.
 6. Frontend setup: Vite + TS, Tailwind with custom tokens, load Libre Baskerville, Josefin Sans, IBM Plex Mono.
 7. App shell: login page, sidebar/top nav, empty Dashboard, route guards.
