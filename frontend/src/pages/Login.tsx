@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { ThemeToggle } from "../components/ThemeToggle";
+import "./Login.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL.replace(/\/$/, "")}/api/v1`
@@ -85,119 +86,100 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div
-      className="min-h-screen bg-paper flex flex-col"
-      style={{ padding: "0" }}
-    >
-      {/* ── Main split layout ───────────────────────────────── */}
-      <main className="flex-1 grid grid-cols-1 lg:grid-cols-12">
+    <div className="login-shell">
+      <header className="login-topbar">
+        <span className="login-brand">WORKLET 04</span>
+        <ThemeToggle />
+      </header>
 
-        {/* Left: Oversized wordmark */}
-        <div
-          className="lg:col-span-7 flex flex-col justify-center px-12 py-16 lg:py-24"
-          style={{ borderRight: "1px solid var(--rule)" }}
-        >
-          <h1
-            className="font-serif text-ink tracking-tight mb-6"
-            style={{
-              fontSize: "clamp(48px, 7vw, 96px)",
-              lineHeight: "0.95",
-              letterSpacing: "-0.02em",
-            }}
-          >
+      <main className="login-main">
+        <section className="login-intro" aria-labelledby="login-intro-title">
+          <h1 id="login-intro-title">
             Meeting
             <br />
-            Organizer
-            <sup
-              className="font-sans"
-              style={{ fontSize: "clamp(14px, 1.5vw, 20px)", verticalAlign: "super" }}
-            >
-              ™
-            </sup>
+            Workflow
+            <br />
+            Engine
           </h1>
-
-          <p className="lead-italic max-w-sm">
+          <p className="login-intro-description">
             Meetings, minuted and followed through.
           </p>
-        </div>
+        </section>
 
-        {/* Right: Sign-in form */}
-        <div className="lg:col-span-5 flex flex-col justify-center px-10 py-16 lg:py-24">
-          <h2 className="label text-soft mb-8">Sign In</h2>
+        <section className="login-access" aria-labelledby="login-title">
+          <div className="login-access-inner">
+            <p className="login-kicker">YOUR WORKSPACE</p>
+            <h2 id="login-title">Welcome back.</h2>
+            <p className="login-access-description">
+              Sign in with your organization account to continue.
+            </p>
 
-          {error && (
-            <div className="error-banner mb-6" role="alert" aria-live="polite">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-8" noValidate>
-            {/* Username field with float label */}
-            <div className="field-float">
-              <label htmlFor="login-username" className="field-label">
-                Username
-              </label>
-              <input
-                id="login-username"
-                type="text"
-                required
-                autoComplete="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="input-underline"
-              />
-            </div>
-
-            {/* Password field with float label */}
-            <div className="field-float">
-              <label htmlFor="login-password" className="field-label">
-                Password
-              </label>
-              <input
-                id="login-password"
-                type="password"
-                required
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="input-underline"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full btn-primary"
-            >
-              {loading ? "Authenticating…" : "Sign In"}
-            </button>
-          </form>
-
-          {IS_DEV && (
-            <div className="mt-10 pt-6 border-t border-rule">
-              <p className="label text-faint mb-3">Quick Developer Sign-In</p>
-              <div className="flex flex-wrap gap-2">
-                {DEV_LOGIN_ROLES.map((r) => (
-                  <button
-                    key={r.username}
-                    type="button"
-                    disabled={loading}
-                    onClick={() => handleQuickLogin(r.username)}
-                    className="editorial-tag editorial-tag-default hover:border-ink hover:text-ink transition-colors cursor-pointer text-10 py-1 px-2 disabled:opacity-50"
-                  >
-                    {r.label}
-                  </button>
-                ))}
+            {error && (
+              <div className="login-error" role="alert" aria-live="polite">
+                {error}
               </div>
-            </div>
-          )}
-        </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="login-form" noValidate>
+              <div className="login-field">
+                <label htmlFor="login-username">Username or email</label>
+                <input
+                  id="login-username"
+                  type="text"
+                  required
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                />
+              </div>
+
+              <div className="login-field">
+                <label htmlFor="login-password">Password</label>
+                <input
+                  id="login-password"
+                  type="password"
+                  required
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+
+              <button type="submit" disabled={loading} className="login-submit">
+                <span>{loading ? "Signing in…" : "Sign in"}</span>
+                <span aria-hidden="true">↗</span>
+              </button>
+            </form>
+
+            {IS_DEV && (
+              <div className="login-dev-access">
+                <p className="login-dev-heading">DEVELOPMENT ACCESS</p>
+                <div className="login-dev-roles">
+                  {DEV_LOGIN_ROLES.map((role) => (
+                    <button
+                      key={role.username}
+                      type="button"
+                      disabled={loading}
+                      onClick={() => handleQuickLogin(role.username)}
+                    >
+                      {role.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <p className="login-access-note">
+              Access is managed by your organization administrator.
+            </p>
+          </div>
+        </section>
       </main>
 
-      {/* ── Footer ─────────────────────────────────────────── */}
-      <footer className="page-footer no-print">
-        <span>Worklet 4 · Agentic AI Lab</span>
-        <ThemeToggle />
+      <footer className="login-bottom">
+        <span>MEETINGS · DECISIONS · FOLLOW-THROUGH</span>
       </footer>
     </div>
   );

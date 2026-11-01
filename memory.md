@@ -63,9 +63,9 @@ Attempts of 3 or more on one task means stop and ask the user to clarify the req
 | --- | --- |
 | **Last updated** | 2026-11-01 |
 | **Current phase** | Precision tightening, persistent jobs, and verification |
-| **Current task** | Consolidate the duplicate project progress log into memory.md |
+| **Current task** | Simplify the login interface to the requested minimal brand layout |
 | **Status** | NEEDS REVIEW |
-| **Files being touched** | memory.md, Meeting Organizer Agent — memory.md |
+| **Files being touched** | frontend/src/pages/Login.tsx, frontend/src/pages/Login.css, memory.md |
 | **Next task** | Re-run the full benchmark when Gemini is available; obtain the requested real-transcript fixtures; review job delivery state and persistence on target host |
 | **Blockers** | Latest live benchmark completed 9/10; meeting 5 failed with Gemini HTTP 503. Both real-transcript fixtures are absent. No endpoint-specific pre-change timings or deployed timings are available. SMTP outcomes during a crash are retained as uncertain and require manual reconciliation rather than blind resend. |
 | **Open questions for user** | None |
@@ -391,6 +391,7 @@ One entry per working session, newest at the top.
 
 | Date | Tasks touched | Result | Next step |
 | --- | --- | --- | --- |
+| 2026-11-01 | Login interface refinement | Removed the agenda illustration and extra decorative elements; restored a minimal split layout with “Meeting Workflow Engine” branding. Kept authentication flows and theme toggle. Production build passed; browser confirmed the desktop page fits the viewport. Status: NEEDS REVIEW. | Review the updated sign-in screen. |
 | 2026-11-01 | SQLite backup and migrations | Backed up `sql_app.db` to `sql_app.backup.db`; ran `PYTHONPATH=backend python -m alembic upgrade head`; current revision `015_reminder_delivery_state (head)`. Both sample fixtures are missing, so the regression test was not run. Status: NEEDS REVIEW. | Provide `data/sample_meeting_transcript.txt` and `data/sample_meeting_gold.json` to run the regression. |
 | 2026-11-01 | Consolidate duplicate progress log | Compared both memory files: all progress-log entries from `Meeting Organizer Agent — memory.md` were already present in `memory.md`; retained its unique 2026-10-17 state snapshot and noted its superseded K3 blocker here. Removed the redundant duplicate file after preserving that unique information. Status: NEEDS REVIEW. | Continue tracking work in this single `memory.md`; keep all project statuses at NEEDS REVIEW until user review. |
 | 2026-11-01 | Precision tightening, durable async jobs, frontend polling, and verification | Tightened explicit action/decision criteria, corrected duplicate quote timestamps, merged duplicate tasks and applied deadline corrections; diagnosed all 14 pre-change false positives in evaluation_report.md. Added persistent jobs, worker retries/recovery, owner/meeting-authorized GET /jobs/{id}, queued scheduling/confirmation/transcription/minutes/agenda/distribution paths, and frontend polling with job progress and thin loading line. Kept transcript/minutes/agenda DB writes in the same transaction as job completion to prevent duplicate results on retried work. Added SMTP attempt-state records so ambiguous outcomes are not blindly resent. Alembic head verified at 015_reminder_delivery_state. Live benchmark: 9/10 completed; meeting 5 failed with Gemini HTTP 503; completed subset actions 6/0/0 and decisions 3/0/0, not a full-dataset score. Both real-transcript fixtures absent. Source TestClient async enqueue p50: start 6.91 ms, confirm 6.63 ms, transcript paste 6.68 ms, approval 6.61 ms, distribution 5.88 ms, agenda 5.08 ms. Final verification: backend suite 194 passed, 1 skipped, 4 warnings in 34.86 s; frontend production build passed in 11.01 s; compileall passed. All changes NEEDS REVIEW. | Retry benchmark after provider recovery; obtain fixtures; review ambiguous SMTP state and deployment storage. |
