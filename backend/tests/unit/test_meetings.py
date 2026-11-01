@@ -101,6 +101,39 @@ def test_meeting_creation_and_slot_ranking(client, test_db):
     }
 
 
+def test_get_meeting_by_id(client):
+    login_res = client.post(
+        "/api/v1/auth/login",
+        json={"username": "chairman", "password": "password123"},
+    )
+    headers = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
+    create_res = client.post(
+        "/api/v1/meetings",
+        json={"title": "Meeting detail lookup", "attendee_emails": []},
+        headers=headers,
+    )
+    meeting_id = create_res.json()["meeting"]["id"]
+
+    response = client.get(f"/api/v1/meetings/{meeting_id}", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json()["id"] == meeting_id
+    assert response.json()["title"] == "Meeting detail lookup"
+
+    student_login = client.post(
+        "/api/v1/auth/login",
+        json={"username": "aniket", "password": "password123"},
+    )
+    student_headers = {
+        "Authorization": f"Bearer {student_login.json()['access_token']}"
+    }
+    hidden_response = client.get(
+        f"/api/v1/meetings/{meeting_id}",
+        headers=student_headers,
+    )
+    assert hidden_response.status_code == 404
+
+
 def test_confirm_slot_and_room_booking(client):
     # Login
     login_res = client.post("/api/v1/auth/login", json={"username": "chairman", "password": "password123"})

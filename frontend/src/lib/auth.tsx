@@ -1,10 +1,8 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { api } from "../api/client";
 import { getAuthToken, removeAuthToken, setAuthToken } from "./theme";
-import { fetchWithRetry } from "../api/client";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL.replace(/\/$/, "")}/api/v1`
-  : "/api/v1";
+const AUTH_USER_KEY = "meeting_organizer_user";
 
 export interface User {
   id: number;
@@ -23,44 +21,83 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function readCachedUser(): User | null {
+  if (!getAuthToken()) return null;
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(AUTH_USER_KEY) || "null");
+    if (
+      typeof value === "object" &&
+      value !== null &&
+      "id" in value &&
+      typeof value.id === "number" &&
+      "name" in value &&
+      typeof value.name === "string" &&
+      "email" in value &&
+      typeof value.email === "string" &&
+      "role" in value &&
+      ["chairman", "principal", "hod", "teacher", "student"].includes(String(value.role))
+    ) {
+      return value as User;
+    }
+  } catch {
+    localStorage.removeItem(AUTH_USER_KEY);
+  }
+  return null;
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [token, setTokenState] = useState<string | null>(getAuthToken());
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [user, setUser] = useState<User | null>(readCachedUser);
+  const [loading, setLoading] = useState<boolean>(
+    () => Boolean(getAuthToken()) && !readCachedUser(),
+  );
 
   useEffect(() => {
-    if (token) {
-      fetchWithRetry(`${API_BASE_URL}/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
+    if (!token) {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
+
+    api.get<User>("/auth/me")
+      .then((userData) => {
+        setUser(userData);
+        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(userData));
       })
-        .then((res) => (res.ok ? res.json() : Promise.reject()))
-        .then((userData) => setUser(userData))
-        .catch((error: unknown) => {
-          console.error("Session validation failed:", error);
+      .catch((error: unknown) => {
+        console.error("Session validation failed:", error);
+        const message = error instanceof Error ? error.message : "";
+        if (/Could not validate credentials|Not authenticated/i.test(message)) {
           removeAuthToken();
+          localStorage.removeItem(AUTH_USER_KEY);
           setTokenState(null);
           setUser(null);
-        })
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+        }
+      })
+      .finally(() => setLoading(false));
   }, [token]);
 
   const login = (newToken: string, userData: User) => {
     setAuthToken(newToken);
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(userData));
     setTokenState(newToken);
     setUser(userData);
   };
 
   const logout = () => {
     removeAuthToken();
+    localStorage.removeItem(AUTH_USER_KEY);
     setTokenState(null);
     setUser(null);
   };
 
+  const value = useMemo(
+    () => ({ user, token, login, logout, loading }),
+    [user, token, loading],
+  );
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, loading }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

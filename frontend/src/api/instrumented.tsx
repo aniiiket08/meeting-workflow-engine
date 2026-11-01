@@ -78,8 +78,12 @@ const BASE_URL = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api/v1`
   : "/api/v1";
 const RETRY_DELAYS_MS = [500, 1000, 2000];
+const GET_CACHE_TTL_MS = 1500;
 const SERVER_UNAVAILABLE_MESSAGE =
   "The server is temporarily unreachable. Check that the backend is running, then try again.";
+const getCache = new Map<string, { expiresAt: number; value: unknown }>();
+const inFlightGets = new Map<string, Promise<unknown>>();
+let cacheGeneration = 0;
 
 const isProxyConnectionFailure = async (response: Response): Promise<boolean> => {
   if (response.status !== 500 || !response.headers.get("content-type")?.includes("text/plain")) {
@@ -117,7 +121,14 @@ export async function fetchWithRetry(
     const proxyFailure = await isProxyConnectionFailure(response);
     const temporaryGatewayFailure =
       safeToRetryNetworkError && [502, 503, 504].includes(response.status);
-    if (!proxyFailure && !temporaryGatewayFailure) return response;
+    if (!proxyFailure && !temporaryGatewayFailure) {
+      if (!safeToRetryNetworkError && response.ok) {
+        cacheGeneration += 1;
+        getCache.clear();
+        inFlightGets.clear();
+      }
+      return response;
+    }
     if (attempt >= RETRY_DELAYS_MS.length) {
       throw new Error(SERVER_UNAVAILABLE_MESSAGE);
     }
@@ -125,7 +136,7 @@ export async function fetchWithRetry(
   }
 }
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+async function requestUncached<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = getAuthToken();
   const headers: Record<string, string> = { ...(options.headers as Record<string, string>) };
   if (!(options.body instanceof FormData) && !headers["Content-Type"]) {
@@ -177,6 +188,41 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     _setWaking(false);
     throw err;
   }
+}
+
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const method = (options.method || "GET").toUpperCase();
+  if (method !== "GET" || endpoint.startsWith("/jobs/")) {
+    return requestUncached<T>(endpoint, options);
+  }
+
+  const token = getAuthToken() || "anonymous";
+  const key = `${token}:${endpoint}`;
+  const cached = getCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value as T;
+  }
+
+  const pending = inFlightGets.get(key);
+  if (pending) return pending as Promise<T>;
+
+  const generation = cacheGeneration;
+  const requestPromise = requestUncached<T>(endpoint, options)
+    .then((value) => {
+      if (generation === cacheGeneration) {
+        getCache.set(key, { value, expiresAt: Date.now() + GET_CACHE_TTL_MS });
+      }
+      if (getCache.size > 100) {
+        const oldestKey = getCache.keys().next().value;
+        if (oldestKey) getCache.delete(oldestKey);
+      }
+      return value;
+    })
+    .finally(() => {
+      if (inFlightGets.get(key) === requestPromise) inFlightGets.delete(key);
+    });
+  inFlightGets.set(key, requestPromise);
+  return requestPromise;
 }
 
 export const api = {

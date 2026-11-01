@@ -92,31 +92,26 @@ export const MeetingDetails: React.FC = () => {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    api.get<Meeting[]>("/meetings")
-      .then((meetings) => {
-        const found = meetings.find((m) => String(m.id) === id);
-        if (found) {
-          setMeeting(found);
-          // Pre-fetch agenda and minutes if available
-          api.get<Agenda | { job_id: number }>(`/meetings/${id}/agenda`)
-            .then((response) =>
-              "job_id" in response ? waitForJob<Agenda>(response.job_id) : response,
-            )
-            .then(setAgenda)
-            .catch((err: Error) => setError(err.message || "Could not load agenda."));
-          api.get<MinutesData | { job_id: number }>(`/meetings/${id}/minutes`)
-            .then((response) =>
-              "job_id" in response ? waitForJob<MinutesData>(response.job_id) : response,
-            )
-            .then(setMinutes)
-            .catch((err: Error) => {
-              if (!err.message.toLowerCase().includes("transcript")) {
-                setError(err.message || "Could not load minutes.");
-              }
-            });
-        } else {
-          setError(`Meeting #${id} was not found.`);
-        }
+    api.get<Meeting>(`/meetings/${id}`)
+      .then((found) => {
+        setMeeting(found);
+        const agendaRequest = api.get<Agenda | { job_id: number }>(`/meetings/${id}/agenda`)
+          .then((response) =>
+            "job_id" in response ? waitForJob<Agenda>(response.job_id) : response,
+          )
+          .then(setAgenda)
+          .catch((err: Error) => setError(err.message || "Could not load agenda."));
+        const minutesRequest = api.get<MinutesData | { job_id: number }>(`/meetings/${id}/minutes`)
+          .then((response) =>
+            "job_id" in response ? waitForJob<MinutesData>(response.job_id) : response,
+          )
+          .then(setMinutes)
+          .catch((err: Error) => {
+            if (!err.message.toLowerCase().includes("transcript")) {
+              setError(err.message || "Could not load minutes.");
+            }
+          });
+        void Promise.all([agendaRequest, minutesRequest]);
       })
       .catch((err) => setError(err.message || "Could not load meeting details."))
       .finally(() => setLoading(false));

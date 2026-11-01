@@ -94,6 +94,23 @@ def list_meetings(
     return visible_meetings_query(db, current_user).order_by(Meeting.created_at.desc()).all()
 
 
+@router.get("/{meeting_id}", response_model=MeetingResponse)
+def get_meeting(
+    meeting_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Meeting:
+    """Retrieve one meeting visible to the authenticated user."""
+    meeting = (
+        visible_meetings_query(db, current_user)
+        .filter(Meeting.id == meeting_id)
+        .first()
+    )
+    if meeting is None:
+        raise NotFound(entity="Meeting", identifier=meeting_id)
+    return meeting
+
+
 @router.get("/{meeting_id}/slots", response_model=list[SlotOption])
 def get_meeting_slots(
     meeting_id: int,

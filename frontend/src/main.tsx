@@ -21,10 +21,11 @@ const Schedule = lazy(() => import("./pages/Schedule").then(m => ({ default: m.S
 const TraceViewer = lazy(() => import("./pages/TraceViewer").then(m => ({ default: m.TraceViewer })));
 
 const RouteLoadingFallback: React.FC = () => (
-  <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 text-neutral-500">
-    <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin mb-4" />
-    <span className="text-sm font-sans">Loading page...</span>
-  </div>
+  <div
+    className="route-loading-indicator"
+    role="status"
+    aria-label="Loading page"
+  />
 );
 
 const ProtectedRoute: React.FC<{
@@ -33,14 +34,7 @@ const ProtectedRoute: React.FC<{
 }> = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-paper flex items-center justify-center font-serif text-soft">
-        Loading...
-      </div>
-    );
-  }
-
+  if (loading) return <RouteLoadingFallback />;
   if (!user) {
     return <Navigate to="/login" replace />;
   }

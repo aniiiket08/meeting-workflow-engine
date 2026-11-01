@@ -108,8 +108,8 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      api.get<Meeting[]>("/meetings").catch(() => []),
-      api.get<ActionItem[]>("/actions").catch(() => []),
+      api.get<Meeting[]>("/meetings"),
+      api.get<ActionItem[]>("/actions"),
     ])
       .then(([m, a]) => {
         setMeetings(m);
