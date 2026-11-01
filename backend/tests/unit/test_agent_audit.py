@@ -224,7 +224,7 @@ def test_llm_repair_retries_once_then_returns_validated_output(monkeypatch):
 
 
 def test_gemini_call_records_usage_and_does_not_log_key(audit_db, monkeypatch):
-    service = LLMService()
+    service = LLMService(use_cache=False)
     service.gemini_key = "test-key-do-not-log"
     service.model = "gemini-3.1-flash-lite"
     captured = {}
@@ -269,7 +269,7 @@ def test_gemini_call_records_usage_and_does_not_log_key(audit_db, monkeypatch):
 
 
 def test_gemini_retries_transient_server_errors(monkeypatch):
-    service = LLMService()
+    service = LLMService(use_cache=False)
     service.gemini_key = "test-key-do-not-log"
     attempts = 0
 

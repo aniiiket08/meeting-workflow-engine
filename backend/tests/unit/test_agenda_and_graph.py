@@ -10,9 +10,11 @@ from app.agents.agenda import AgendaItemSchema, TimeboxedAgendaSchema
 from app.api.deps import get_db
 from app.core.security import get_password_hash
 from app.db.base import Base
+from app.db.models.agenda import Agenda, AgendaStatus
 from app.db.models.room import Room
 from app.db.models.user import User, UserRole
 from app.main import app
+import app.main as main_module
 from app.memory.vector_store import memory_store
 from app.services.llm import llm_service
 
@@ -60,9 +62,15 @@ def client(test_db):
             pass
 
     app.dependency_overrides[get_db] = override_get_db
+    original_start_worker = main_module.start_worker
+    original_stop_worker = main_module.stop_worker
+    main_module.start_worker = lambda: None
+    main_module.stop_worker = lambda: None
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
+    main_module.start_worker = original_start_worker
+    main_module.stop_worker = original_stop_worker
 
 
 def test_memory_store_retrieval():
@@ -118,7 +126,7 @@ def test_langgraph_execution_and_checkpoint_approval(client, test_db, monkeypatc
     assert state["approval_status"] == "pending"
 
 
-def test_agenda_approval_endpoint(client, monkeypatch):
+def test_agenda_approval_endpoint(client, test_db, monkeypatch):
     monkeypatch.setattr(llm_service, "generate_structured", _agenda_response)
     # Login as Chairman
     login_res = client.post("/api/v1/auth/login", json={"username": "chairman", "password": "password123"})
@@ -137,6 +145,18 @@ def test_agenda_approval_endpoint(client, monkeypatch):
     agenda_res = client.get(f"/api/v1/meetings/{meeting_id}/agenda", headers=headers)
     assert agenda_res.status_code == 200
     agenda_data = agenda_res.json()
+    assert isinstance(agenda_data["job_id"], int)
+    generated = _agenda_response("agenda", TimeboxedAgendaSchema)
+    agenda = Agenda(
+        meeting_id=meeting_id,
+        items_json=[item.model_dump() for item in generated.items],
+        status=AgendaStatus.DRAFT,
+    )
+    test_db.add(agenda)
+    test_db.commit()
+    agenda_data = client.get(
+        f"/api/v1/meetings/{meeting_id}/agenda", headers=headers
+    ).json()
     assert agenda_data["status"] == "draft"
 
     # Approve agenda via approval gate endpoint

@@ -10,6 +10,7 @@ from app.core.errors import Conflict, NotFound
 from app.db.models.agenda import Agenda, AgendaStatus
 from app.db.models.meeting import Meeting, MeetingStatus
 from app.db.models.user import User, UserRole
+from app.services.job_worker import enqueue_job
 
 router = APIRouter(tags=["agendas"])
 
@@ -34,20 +35,20 @@ def get_meeting_agenda(
     if not db_agenda:
         if not is_meeting_manager(current_user):
             raise NotFound(entity="Agenda for Meeting", identifier=meeting_id)
-        agenda_model = run_agenda_agent(
-            db=db,
+        job = enqueue_job(
+            db,
+            "agenda_generate",
+            current_user.id,
+            {},
+            "Drafting agenda...",
             meeting_id=meeting_id,
-            agenda_items_text=meeting.agenda_items_text or None,
         )
-        db_agenda = Agenda(
-            meeting_id=meeting_id,
-            items_json=[item.model_dump() for item in agenda_model.items],
-            status=AgendaStatus.DRAFT,
-        )
-        db.add(db_agenda)
-        meeting.status = MeetingStatus.AGENDA_DRAFTED
-        db.commit()
-        db.refresh(db_agenda)
+        return {
+            "job_id": job.id,
+            "status": job.status,
+            "progress_text": job.progress_text,
+            "meeting_id": meeting_id,
+        }
 
     return {
         "id": db_agenda.id,

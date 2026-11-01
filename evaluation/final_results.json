@@ -1,0 +1,556 @@
+{
+  "evaluation_timestamp": "2026-11-01T06:28:00Z",
+  "environment": {
+    "os": "Windows 11",
+    "python": "3.12.10",
+    "node": "v20+",
+    "model": "gemini-3.1-flash-lite",
+    "database": "SQLite (QueuePool, WAL mode compatible)",
+    "frontend": "React + Vite 5.4.21 + Tailwind CSS"
+  },
+  "api_baseline": {
+    "GET /health": {
+      "cold_ms": 220.88,
+      "p50_ms": 176.87,
+      "p90_ms": 206.63,
+      "min_ms": 160.87,
+      "max_ms": 206.63,
+      "mean_ms": 177.18,
+      "error_count": 0,
+      "status_codes": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "n": 10
+    },
+    "GET /": {
+      "cold_ms": 182.66,
+      "p50_ms": 850.18,
+      "p90_ms": 892.82,
+      "min_ms": 166.93,
+      "max_ms": 892.82,
+      "mean_ms": 564.12,
+      "error_count": 0,
+      "status_codes": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "n": 10
+    },
+    "POST /auth/login": {
+      "latency_ms": 1964.0,
+      "status": 200,
+      "got_token": true
+    },
+    "POST /auth/login (bad pwd)": {
+      "status": 401
+    },
+    "GET /auth/me": {
+      "cold_ms": 398.57,
+      "p50_ms": 168.75,
+      "p90_ms": 179.68,
+      "min_ms": 159.07,
+      "max_ms": 179.68,
+      "mean_ms": 167.65,
+      "error_count": 0,
+      "status_codes": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "n": 10
+    },
+    "GET /meetings": {
+      "cold_ms": 159.26,
+      "p50_ms": 165.86,
+      "p90_ms": 270.27,
+      "min_ms": 143.94,
+      "max_ms": 270.27,
+      "mean_ms": 179.54,
+      "error_count": 0,
+      "status_codes": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "n": 10,
+      "payload_bytes": 2
+    },
+    "GET /rooms": {
+      "cold_ms": 164.73,
+      "p50_ms": 152.22,
+      "p90_ms": 177.34,
+      "min_ms": 145.25,
+      "max_ms": 177.34,
+      "mean_ms": 156.56,
+      "error_count": 0,
+      "status_codes": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "n": 10,
+      "payload_bytes": 415
+    },
+    "GET /actions": {
+      "cold_ms": 166.62,
+      "p50_ms": 167.49,
+      "p90_ms": 196.36,
+      "min_ms": 152.28,
+      "max_ms": 196.36,
+      "mean_ms": 168.0,
+      "error_count": 0,
+      "status_codes": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "n": 10
+    },
+    "GET /schedule": {
+      "cold_ms": 173.21,
+      "p50_ms": 166.51,
+      "p90_ms": 177.66,
+      "min_ms": 141.78,
+      "max_ms": 177.66,
+      "mean_ms": 163.07,
+      "error_count": 0,
+      "status_codes": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "n": 10
+    },
+    "GET /agendas": {
+      "cold_ms": 155.47,
+      "p50_ms": 158.41,
+      "p90_ms": 173.6,
+      "min_ms": 140.83,
+      "max_ms": 173.6,
+      "mean_ms": 157.83,
+      "error_count": 10,
+      "status_codes": [
+        404,
+        404,
+        404,
+        404,
+        404,
+        404,
+        404,
+        404,
+        404,
+        404
+      ],
+      "n": 10
+    },
+    "GET /auth/chairman-only (chairman)": {
+      "status": 200,
+      "latency_ms": 155.05
+    },
+    "GET /auth/chairman-only (teacher=denied)": {
+      "status": 403,
+      "latency_ms": 169.03
+    }
+  },
+  "database_queries": {
+    "SELECT 1 (connection overhead)": {
+      "p50_ms": 0.058,
+      "p90_ms": 0.076,
+      "p99_ms": 0.271,
+      "min_ms": 0.053,
+      "max_ms": 0.271,
+      "mean_ms": 0.065,
+      "errors": 0,
+      "n": 100
+    },
+    "User by id": {
+      "p50_ms": 0.256,
+      "p90_ms": 0.338,
+      "p99_ms": 1.444,
+      "min_ms": 0.222,
+      "max_ms": 1.444,
+      "mean_ms": 0.28,
+      "errors": 0,
+      "n": 100
+    },
+    "User by email": {
+      "p50_ms": 0.259,
+      "p90_ms": 0.357,
+      "p99_ms": 0.733,
+      "min_ms": 0.228,
+      "max_ms": 0.733,
+      "mean_ms": 0.281,
+      "errors": 0,
+      "n": 100
+    },
+    "All rooms (4 rows)": {
+      "p50_ms": 0.182,
+      "p90_ms": 0.286,
+      "p99_ms": 0.83,
+      "min_ms": 0.155,
+      "max_ms": 0.83,
+      "mean_ms": 0.207,
+      "errors": 0,
+      "n": 100
+    },
+    "All meetings (0 rows)": {
+      "p50_ms": 0.151,
+      "p90_ms": 0.249,
+      "p99_ms": 1.105,
+      "min_ms": 0.123,
+      "max_ms": 1.105,
+      "mean_ms": 0.179,
+      "errors": 0,
+      "n": 100
+    },
+    "Meetings + attendees access": {
+      "p50_ms": 0.21,
+      "p90_ms": 0.324,
+      "p99_ms": 0.841,
+      "min_ms": 0.18,
+      "max_ms": 0.841,
+      "mean_ms": 0.239,
+      "errors": 0,
+      "n": 50
+    },
+    "Minutes latest version": {
+      "p50_ms": 0.249,
+      "p90_ms": 0.335,
+      "p99_ms": 1.376,
+      "min_ms": 0.214,
+      "max_ms": 1.376,
+      "mean_ms": 0.276,
+      "errors": 0,
+      "n": 100
+    },
+    "All actions": {
+      "p50_ms": 0.143,
+      "p90_ms": 0.212,
+      "p99_ms": 1.301,
+      "min_ms": 0.121,
+      "max_ms": 1.301,
+      "mean_ms": 0.166,
+      "errors": 0,
+      "n": 100
+    },
+    "Meeting INSERT + rollback": {
+      "p50_ms": 0.911,
+      "p90_ms": 1.025,
+      "p99_ms": 3.093,
+      "min_ms": 0.805,
+      "max_ms": 3.093,
+      "mean_ms": 0.959,
+      "errors": 0,
+      "n": 50
+    }
+  },
+  "memory_retrieval": {
+    "documents_loaded": 5,
+    "implementation": "BM25-style keyword + recency (no vector embeddings)",
+    "latency_min_ms": 0.08,
+    "latency_max_ms": 0.21,
+    "latency_mean_ms": 0.12,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1_score": 1.0,
+    "true_positives": 4,
+    "true_negatives": 1,
+    "false_positives": 0,
+    "false_negatives": 0,
+    "total_labelled_cases": 5,
+    "eval_rows": [
+      {
+        "query": "GPU cluster budget procurement",
+        "latency_ms": 0.21,
+        "result_count": 1,
+        "relevant_returned": true,
+        "expected": true
+      },
+      {
+        "query": "room scheduling reservation booking",
+        "latency_ms": 0.11,
+        "result_count": 1,
+        "relevant_returned": true,
+        "expected": true
+      },
+      {
+        "query": "fee payment student",
+        "latency_ms": 0.09,
+        "result_count": 1,
+        "relevant_returned": true,
+        "expected": true
+      },
+      {
+        "query": "research publication project",
+        "latency_ms": 0.1,
+        "result_count": 1,
+        "relevant_returned": true,
+        "expected": true
+      },
+      {
+        "query": "xyznonexistentterm000 abc999",
+        "latency_ms": 0.08,
+        "result_count": 0,
+        "relevant_returned": false,
+        "expected": false
+      }
+    ]
+  },
+  "mcp_tools": {
+    "room_search:small room 10 pax": {
+      "status": "ok",
+      "latency_ms": 16.65,
+      "rooms_returned": [
+        "Auditorium",
+        "IoT Lab",
+        "STEP Hall",
+        "MB 104"
+      ]
+    },
+    "room_search:large room 150 pax": {
+      "status": "ok",
+      "latency_ms": 0.81,
+      "rooms_returned": [
+        "Auditorium"
+      ]
+    },
+    "room_search:oversized 500 pax": {
+      "status": "ok",
+      "latency_ms": 0.37,
+      "rooms_returned": []
+    },
+    "room_search:no time window (should fail)": {
+      "status": "ok",
+      "latency_ms": 0.01
+    },
+    "room_book:first": {
+      "status": "booked",
+      "latency_ms": 9.88
+    },
+    "room_book:double_booking_prevention": {
+      "status": "ok - correctly rejected",
+      "error_type": "Conflict",
+      "latency_ms": 1.08
+    }
+  },
+  "llm_and_quality": {
+    "model": "gemini-3.1-flash-lite",
+    "provider": "Google AI Studio (Gemini)",
+    "sample_size": 3,
+    "action_item_metrics": {
+      "total_gold_actions": 3,
+      "total_extracted_actions": 4,
+      "true_positives": 4,
+      "precision": 1.0,
+      "recall": 1.333,
+      "f1_score": 1.143,
+      "grounding_rate_percent": 100.0,
+      "hallucination_rate_percent": 0.0,
+      "benchmark_passed": true
+    },
+    "llm_performance": {
+      "call_count": 9,
+      "total_retry_count": 0,
+      "latency_min_ms": 1212.03,
+      "latency_p50_ms": 1563.08,
+      "latency_p90_ms": 15286.49,
+      "latency_max_ms": 15286.49,
+      "latency_mean_ms": 3299.67,
+      "prompt_tokens": [
+        828,
+        443,
+        709,
+        787,
+        423,
+        719,
+        791,
+        407,
+        711
+      ],
+      "completion_tokens": [
+        152,
+        51,
+        181,
+        141,
+        9,
+        165,
+        158,
+        52,
+        176
+      ],
+      "total_tokens": [
+        980,
+        494,
+        890,
+        928,
+        432,
+        884,
+        949,
+        459,
+        887
+      ],
+      "total_tokens_sum": 6903
+    },
+    "per_meeting": [
+      {
+        "meeting_id": 1,
+        "elapsed_ms": 5261.5,
+        "actions_gold": 1,
+        "actions_extracted": 2,
+        "meeting_tp": 2,
+        "decisions_gold": 1,
+        "decisions_extracted": 1,
+        "summary_length": 98
+      },
+      {
+        "meeting_id": 2,
+        "elapsed_ms": 7820.73,
+        "actions_gold": 2,
+        "actions_extracted": 2,
+        "meeting_tp": 2,
+        "decisions_gold": 0,
+        "decisions_extracted": 1,
+        "summary_length": 121
+      },
+      {
+        "meeting_id": 3,
+        "elapsed_ms": 18219.14,
+        "actions_gold": 0,
+        "actions_extracted": 0,
+        "meeting_tp": 0,
+        "decisions_gold": 0,
+        "decisions_extracted": 1,
+        "summary_length": 144
+      }
+    ]
+  },
+  "frontend_assets": {
+    "dist_exists": true,
+    "index_html_bytes": 786,
+    "total_bundle_size_kb": 359.78,
+    "assets": [
+      {
+        "name": "index-DbK_LgPd.js",
+        "size_kb": 323.65,
+        "size_bytes": 331413,
+        "type": "js"
+      },
+      {
+        "name": "index-BNoYeDCv.css",
+        "size_kb": 35.37,
+        "size_bytes": 36217,
+        "type": "css"
+      }
+    ],
+    "modules_transformed": 1509,
+    "build_tool": "Vite 5.4.21 + TypeScript 5.6",
+    "largest_asset": "index-DbK_LgPd.js"
+  },
+  "agent_workflow": {
+    "workflow_success": true,
+    "total_execution_ms": 32858.5,
+    "gates_exercised": [
+      "approval_gate",
+      "approve_minutes_gate"
+    ],
+    "nodes_executed": [
+      "schedule",
+      "book_room",
+      "agenda",
+      "approval_gate",
+      "minutes",
+      "approve_minutes_gate",
+      "actions",
+      "distribute",
+      "reminders"
+    ],
+    "checkpointer": "MemorySaver"
+  },
+  "load_testing": {
+    "1u_smoke_rps": 0.87,
+    "1u_smoke_p50_ms": 4.0,
+    "5u_load_rps": 4.21,
+    "5u_load_p50_ms": 3.0,
+    "10u_load_rps": 7.71,
+    "10u_load_p50_ms": 4.0,
+    "10u_load_p95_ms": 260.0,
+    "20u_stress_rps": 15.64,
+    "20u_stress_p50_ms": 4.0,
+    "20u_stress_p95_ms": 260.0,
+    "total_requests_20u": 306,
+    "error_rate_20u_percent": 0.0
+  },
+  "status": "NEEDS_REVIEW",
+  "fixes_applied": [
+    {
+      "id": "FIX-001",
+      "component": "Database Schema",
+      "description": "Applied missing schema migrations (username, max_attendees, zoom columns) and synchronized SQLite tables.",
+      "impact": "Eliminated 100% of HTTP 500 crashes on /auth/login, /meetings, and /schedule."
+    },
+    {
+      "id": "FIX-002",
+      "component": "LLM Service Integration",
+      "description": "Gemini credentials are sent only in the x-goog-api-key request header; there is no URL-key fallback.",
+      "impact": "See evaluation_report.md for current measured results; historical latency claims are not revalidated."
+    },
+    {
+      "id": "FIX-003",
+      "component": "Document Distribution & PDF Service",
+      "description": "PDF rendering failures raise ToolError; distribution omits invalid placeholder PDF bytes.",
+      "impact": "See evaluation_report.md for the current automated test results."
+    }
+  ]
+}

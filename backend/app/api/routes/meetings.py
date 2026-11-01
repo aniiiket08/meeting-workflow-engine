@@ -3,7 +3,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.agents.room_booking import run_room_booking_agent
 from app.agents.scheduling import run_scheduling_agent
 from app.api.deps import (
     get_current_user,
@@ -17,6 +16,7 @@ from app.core.errors import NotFound
 from app.db.models.meeting import Attendee, Meeting, MeetingStatus
 from app.db.models.user import User, UserRole
 from app.db.schemas.meeting import MeetingConfirmRequest, MeetingCreate, MeetingResponse, SlotOption
+from app.services.job_worker import enqueue_job
 
 router = APIRouter(prefix="/meetings", tags=["meetings"])
 
@@ -60,21 +60,28 @@ def create_meeting_request(
         elif email != current_user.email.lower():
             db.add(Attendee(meeting_id=meeting.id, external_email=email))
 
-    meeting.status = MeetingStatus.SLOTS_PROPOSED
-    db.commit()
-    db.refresh(meeting)
-
-    # Run Scheduling Agent
-    slots = run_scheduling_agent(
-        attendee_emails=all_emails,
-        duration_minutes=payload.duration_minutes,
-        target_date_iso=payload.target_date.isoformat() if payload.target_date else None,
+    meeting.status = MeetingStatus.REQUESTED
+    db.flush()
+    job = enqueue_job(
+        db,
+        "meeting_start",
+        current_user.id,
+        {
+            "attendee_emails": all_emails,
+            "duration_minutes": payload.duration_minutes,
+            "target_date_iso": payload.target_date.isoformat() if payload.target_date else None,
+            "meeting_id": meeting.id,
+        },
+        "Finding meeting times...",
         meeting_id=meeting.id,
     )
+    db.refresh(meeting)
 
     return {
         "meeting": MeetingResponse.model_validate(meeting),
-        "slots": slots,
+        "job_id": job.id,
+        "status": job.status,
+        "progress_text": job.progress_text,
     }
 
 
@@ -134,66 +141,27 @@ def confirm_meeting_slot(
             detail="Only the meeting organizer or a university manager can confirm its time.",
         )
 
-    # When user chooses an online meeting via Zoom MCP:
-    if payload.is_online:
-        from dateutil.parser import parse as parse_date
-        from mcp_server.server import MCPServerSkeleton
-        mcp = MCPServerSkeleton()
-        
-        # Calculate start/end dt
-        start_dt = parse_date(payload.selected_start_time)
-        end_dt = parse_date(payload.selected_end_time)
-        if start_dt.tzinfo is None:
-            start_dt = start_dt.replace(tzinfo=timezone.utc)
-        if end_dt.tzinfo is None:
-            end_dt = end_dt.replace(tzinfo=timezone.utc)
-            
-        duration = max(15, int((end_dt - start_dt).total_seconds() // 60))
-        zoom_res = mcp.call_tool(
-            "zoom_create_meeting",
-            {
-                "topic": meeting.title,
-                "start_time": start_dt.isoformat(),
-                "duration_minutes": duration,
-                "timezone": "UTC",
-                "idempotency_key": f"meeting_{meeting.id}_{start_dt.isoformat()}",
-            },
-            agent_name="scheduling_agent",
-        )
-        meeting.start_time = start_dt
-        meeting.end_time = end_dt
-        meeting.room_id = None
-        meeting.zoom_meeting_id = str(zoom_res.get("id"))
-        meeting.zoom_join_url = zoom_res.get("join_url")
-        meeting.status = MeetingStatus.ROOM_BOOKED  # Time & venue confirmed
-        db.commit()
-        db.refresh(meeting)
-        return {
-            "meeting": MeetingResponse.model_validate(meeting),
-            "room_booking": {
-                "status": "online",
-                "message": "Zoom Online Meeting successfully scheduled.",
-                "zoom": zoom_res,
-            },
-        }
-
     headcount = len(meeting.attendees) if meeting.attendees else 1
-
-    # Run Room Booking Agent — pass an explicit room_id when the user selected one.
-    booking_result = run_room_booking_agent(
-        db=db,
+    job = enqueue_job(
+        db,
+        "meeting_confirm",
+        current_user.id,
+        {
+            "is_online": payload.is_online,
+            "selected_start_time": payload.selected_start_time,
+            "selected_end_time": payload.selected_end_time,
+            "headcount": headcount,
+            "equipment_needed": meeting.equipment_needed or [],
+            "room_id": payload.room_id,
+        },
+        "Confirming meeting time and venue...",
         meeting_id=meeting.id,
-        headcount=headcount,
-        start_time_iso=payload.selected_start_time,
-        end_time_iso=payload.selected_end_time,
-        equipment_needed=meeting.equipment_needed,
-        room_id=payload.room_id,
     )
-
-    db.refresh(meeting)
     return {
         "meeting": MeetingResponse.model_validate(meeting),
-        "room_booking": booking_result,
+        "job_id": job.id,
+        "status": job.status,
+        "progress_text": job.progress_text,
     }
 
 
@@ -214,4 +182,3 @@ def discard_meeting(
     db.commit()
     db.refresh(meeting)
     return meeting
-

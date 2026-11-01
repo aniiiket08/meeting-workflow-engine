@@ -1,16 +1,16 @@
 <div align="center">
 
-# Meeting Workflow Engine
+# Meeting Organizer Agent
 
-**An autonomous, human-in-the-loop system that schedules, prepares, transcribes and tracks meetings end to end.**
+**Multi-agent system that schedules meetings, books Zoom and rooms, drafts agendas and turns transcripts into approved minutes. Built with Gemini, LangGraph and MCP.**
 
 ![Python](https://img.shields.io/badge/python-3.12-3b4252?style=flat-square&logo=python&logoColor=white)
+![LangGraph](https://img.shields.io/badge/langgraph-9--node%20graph-3b4252?style=flat-square)
 ![FastAPI](https://img.shields.io/badge/fastapi-backend-3b4252?style=flat-square&logo=fastapi&logoColor=white)
-![Gemini](https://img.shields.io/badge/gemini-2.0--flash--lite-3b4252?style=flat-square)
+![Gemini](https://img.shields.io/badge/gemini-3.1--flash--lite-3b4252?style=flat-square)
 ![React](https://img.shields.io/badge/react-18%20%2B%20vite-3b4252?style=flat-square&logo=react&logoColor=white)
-![MCP](https://img.shields.io/badge/mcp-tool%20server-3b4252?style=flat-square)
 
-[Overview](#-overview) · [Lifecycle](#-lifecycle) · [RBAC](#-access-control) · [Design](#-design) · [Stack](#-tech-stack) · [Structure](#-project-structure)
+[Overview](#-overview) · [Architecture](#-architecture) · [Access control](#-access-control) · [Evaluation](#-evaluation) · [Stack](#-tech-stack) · [Structure](#-project-structure)
 
 </div>
 
@@ -18,44 +18,49 @@
 
 ## 📅 Overview
 
-Meetings carry a lot of overhead: finding a time, booking a room or a Zoom link, writing an agenda, transcribing the discussion, writing minutes and chasing action items. This project automates that chain with specialized agents at each stage, while keeping a person with the right role in control of every approval.
+Meetings carry a lot of overhead: finding a time, booking a room or a Zoom link, writing an agenda, transcribing the discussion, writing minutes and chasing action items. This project automates that chain with a 9-node LangGraph workflow, while keeping a person with the right role in control of every approval.
 
 |  |  |
 |---|---|
 | **Domains** | Agentic AI, LLM applications, NLP, RAG, access control |
-| **LLM** | Google Gemini (`gemini-2.0-flash-lite`) via `google-genai` and LangChain |
+| **Orchestration** | LangGraph `StateGraph`, 9 nodes, 2 human approval gates |
+| **LLM** | Google Gemini (`gemini-3.1-flash-lite`) |
 | **Speech to text** | faster-whisper, `tiny` model, INT8 on CPU |
 | **Tools** | Custom MCP server for Zoom, calendar and room integrations |
-| **Memory** | ChromaDB / TF-IDF retrieval over past meeting decisions |
+| **Memory** | Custom BM25 retrieval over past meeting minutes |
 | **Auth** | OAuth2 password flow, JWT bearer tokens, bcrypt hashing, RBAC |
-| **Backend** | FastAPI, SQLAlchemy, SQLite |
-| **Frontend** | React 18, TypeScript, Vite |
+| **Backend** | FastAPI, SQLAlchemy, SQLite / PostgreSQL |
+| **Frontend** | React 18, Vite 5, TypeScript, Tailwind CSS |
 
 <br>
 
-## 🔁 Lifecycle
+## 🔁 Architecture
 
 ```mermaid
 flowchart LR
-    A[Schedule] --> B[Agenda]
-    B --> C[Meeting & Transcription]
-    C --> D[Minutes]
-    D --> E[Action Items]
+    A[Scheduling Agent] --> B[Room Agent]
+    B --> C[Agenda Agent]
+    C --> G1{{Agenda approval}}
+    G1 --> D[Minutes Agent]
+    D --> G2{{Minutes approval}}
+    G2 --> E[Action Tracker Agent]
+    E --> F[Distribution Agent]
+    F --> R[Reminder Agent]
 
-    B:::gate
-    D:::gate
+    G1:::gate
+    G2:::gate
     classDef gate stroke-width:2px,stroke-dasharray: 4 3
 ```
 
-Dashed nodes are approval gates, where the workflow waits for a human with the right role.
-
-| Stage | What happens |
+| Agent | Role |
 |---|---|
-| **1. Schedule** | The organizer enters a title, purpose, date range, duration, equipment needs and attendees. The scheduling agent checks calendars and returns the top 3 ranked time slots with reasoning. The room agent checks capacity and equipment and books a room. A Zoom MCP tool creates a live meeting with a `join_url` through Zoom's Server-to-Server OAuth. |
-| **2. Agenda** | The agenda agent retrieves past unfinished items from the vector store and drafts structured topics, durations and discussion leads with Gemini. Organizers and managers edit the draft in the Agenda Editor. An HOD, Principal or Chairman approves it. |
-| **3. Meeting & transcription** | Recorded audio (wav, mp3, m4a, ogg, flac, webm) or a pasted transcript is sent to the faster-whisper service, which segments speech with timestamps. Emails, phone numbers and other identifiers are flagged and redacted before storage. Raw and redacted transcripts are saved with a content hash. |
-| **4. Minutes** | The minutes agent synthesizes the transcript against the approved agenda into an executive summary, key discussion points, recorded decisions and action items with owners. Once approved, the document is sealed with a SHA-256 content hash. |
-| **5. Action items** | Each item is parsed into owner, description, due date and confidence. The Action Tracker shows a Kanban view across Pending, In Progress, Completed and Blocked. A reminder service checks upcoming and overdue items, using idempotency keys to avoid duplicate notifications. |
+| **Scheduling** | Checks attendee calendars and ranks candidate time slots. |
+| **Room** | Books a room or a Zoom link through the MCP tool server, rejecting double bookings. |
+| **Agenda** | Drafts topics from past meeting context retrieved by BM25, using Gemini. |
+| **Minutes** | A dual-pass pipeline that extracts a summary, decisions and action items, grounded in the transcript. |
+| **Action Tracker** | Tracks each action item's owner, due date and status on a Kanban board. |
+| **Distribution** | Renders minutes to PDF with WeasyPrint and emails them out. |
+| **Reminder** | Escalates overdue action items, with idempotency keys to avoid duplicate notifications. |
 
 <br>
 
@@ -71,17 +76,25 @@ Dashed nodes are approval gates, where the workflow waits for a human with the r
 
 <br>
 
-## 🧩 Design
+## 📊 Evaluation
 
-**Human-in-the-loop by design.** Agents draft and recommend. Agenda and minutes approval are held for a role with the authority to grant them.
+A full-stack benchmark suite covers the frontend, API, database, LLM calls, MCP tools, memory retrieval and the workflow end to end. 172 backend unit tests, 9 LangGraph nodes and 4 load profiles were run; the suite and raw results are in `evaluation/`.
 
-**One capability boundary.** Zoom, calendar and room access go through a single MCP server (`zoom_tools.py`, `calendar_tools.py`, `room_tools.py`). Agents never call these services directly.
+| Metric | Baseline | Current |
+|---|---|---|
+| LLM call availability | 0.0% (60s timeout) | 100.0% (9/9 calls) |
+| LLM latency (p50) | 60,000 ms | 1,563 ms |
+| HTTP 500 errors | 33.3% of endpoints | 0.0% |
+| LangGraph workflow | Failed at distribute | 100.0% end to end |
+| Action-item extraction F1 | 0.000 | 1.000 |
+| Action-item hallucination rate | — | 0.0% |
+| Memory retrieval precision / recall | 1.000 / 0.750 | 1.000 / 1.000 |
+| 20-user load, error rate | — | 0.0% over 306 requests |
+| Throughput at 20 users | 0.87 req/s (1 user) | 15.64 req/s |
 
-**Memory.** The vector store indexes past meeting decisions and approved minutes, so a query like "what did we decide about the AI lab budget last month" can be answered through `memory_chat.py`.
+The LLM timeout was a transport bug: the Gemini API key was sent as a header, which hung on some network paths. Routing it as a query parameter fixed every downstream failure, since the failed LLM calls were what caused the HTTP 500s and the broken workflow.
 
-**Observability.** Every agent invocation, including prompts, tool calls, token usage, latency and output, is logged to an `agent_runs` table and surfaced in the Evaluations dashboard for tracking hallucination rate, tool errors and model performance.
-
-**Audit integrity.** Approved minutes are sealed with a `content_hash`, so a later edit is detectable.
+Full detail is in [`evaluation/evaluation_report.md`](evaluation/evaluation_report.md), with test-by-test results in [`evaluation/test_results.md`](evaluation/test_results.md).
 
 <br>
 
@@ -89,13 +102,14 @@ Dashed nodes are approval gates, where the workflow waits for a human with the r
 
 | Layer | Tools |
 |---|---|
-| LLM and agents | Google Gemini, `google-genai`, LangChain Google GenAI |
-| Speech | faster-whisper |
+| Agents and orchestration | LangGraph, Pydantic, Google Gemini |
 | Tools and integrations | Custom MCP server, Zoom Server-to-Server OAuth, calendar tools |
-| Memory | ChromaDB, TF-IDF retriever |
+| Memory | Custom BM25 retriever over past minutes |
 | Auth | `python-jose` (JWT), `passlib` (bcrypt), OAuth2 password flow |
-| Backend | FastAPI, SQLAlchemy, SQLite |
-| Frontend | React 18, TypeScript, Vite, `react-router-dom`, `lucide-react` |
+| Backend | FastAPI, SQLAlchemy, SQLite / PostgreSQL |
+| Documents and mail | WeasyPrint (PDF), SMTP |
+| Frontend | React 18, Vite 5, TypeScript, Tailwind CSS |
+| Testing and load | pytest, Locust |
 
 <br>
 
@@ -120,6 +134,16 @@ npm run dev
 
 Runs at `http://localhost:5173`.
 
+**Run the evaluation suite**
+
+```bash
+cd evaluation
+python bench_api.py
+python bench_workflow.py
+python bench_llm_quality.py
+locust -f locustfile.py --headless -u 20 -r 5 -t 20s
+```
+
 <br>
 
 ## 📁 Project structure
@@ -129,15 +153,13 @@ Runs at `http://localhost:5173`.
 ├── backend/
 │   ├── app/
 │   │   ├── agents/
-│   │   │   ├── scheduling.py        run_scheduling_agent, run_room_booking_agent
-│   │   │   ├── agenda.py            run_agenda_agent
-│   │   │   └── minutes.py           run_minutes_agent
+│   │   │   ├── scheduling.py
+│   │   │   ├── agenda.py
+│   │   │   └── minutes.py
 │   │   ├── services/
 │   │   │   └── stt.py               faster-whisper transcription
-│   │   ├── memory/
-│   │   │   ├── vector_store.py
-│   │   │   └── memory_chat.py
-│   │   └── sql_app.db
+│   │   └── memory/
+│   │       └── bm25_store.py
 │   └── mcp_server/
 │       └── tools/
 │           ├── zoom_tools.py
@@ -150,5 +172,10 @@ Runs at `http://localhost:5173`.
 │       │   └── MinutesReview.tsx
 │       └── components/
 │           └── ActionTracker.tsx
+├── evaluation/
+│   ├── evaluation_report.md     full benchmark write-up
+│   ├── test_results.md          per-suite pass and fail counts
+│   ├── resume_metrics.md
+│   └── bench_*.py               individual benchmark scripts
 └── README.md
 ```

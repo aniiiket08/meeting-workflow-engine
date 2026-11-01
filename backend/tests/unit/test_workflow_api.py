@@ -21,6 +21,8 @@ from app.db.models.room import Room
 from app.db.models.trace import AgentRun
 from app.db.models.user import User, UserRole
 from app.main import app
+import app.main as main_module
+import app.services.job_worker as job_worker
 from app.services.email_service import email_service
 from app.services.email_service import SentReminder
 import app.observability.tracer as tracer
@@ -39,6 +41,9 @@ def workflow_client(monkeypatch):
     Base.metadata.create_all(bind=engine)
     db = TestingSessionLocal()
     monkeypatch.setattr(tracer, "SessionLocal", TestingSessionLocal)
+    monkeypatch.setattr(job_worker, "SessionLocal", TestingSessionLocal)
+    monkeypatch.setattr(main_module, "start_worker", lambda: None)
+    monkeypatch.setattr(main_module, "stop_worker", lambda: None)
     monkeypatch.setattr(
         minutes_route,
         "run_minutes_agent",
@@ -126,6 +131,11 @@ def workflow_client(monkeypatch):
     Base.metadata.drop_all(bind=engine)
 
 
+def _process_next_job(db):
+    assert job_worker._run_one()
+    db.expire_all()
+
+
 def test_pasted_transcript_api_redacts_and_generates_minutes(workflow_client, monkeypatch):
     client, db, meeting_id = workflow_client
     agent = minutes_route.run_minutes_agent
@@ -150,8 +160,13 @@ def test_pasted_transcript_api_redacts_and_generates_minutes(workflow_client, mo
     )
 
     assert response.status_code == 200
-    assert response.json()["status"] == "processed"
-    assert "[REDACTED_EMAIL]" in response.json()["redacted_text"]
+    job_id = response.json()["job_id"]
+    _process_next_job(db)
+    job_response = client.get(f"/api/v1/jobs/{job_id}", headers=headers)
+    assert job_response.status_code == 200
+    result = job_response.json()["result"]
+    assert result["status"] == "processed"
+    assert "[REDACTED_EMAIL]" in result["redacted_text"]
     transcript = db.query(Transcript).filter_by(meeting_id=meeting_id).one()
     assert transcript.raw_text == transcript_text
     assert "alice@example.com" not in transcript.redacted_text
@@ -202,7 +217,9 @@ def test_audio_transcript_upload_api_persists_transcription(workflow_client, mon
     )
 
     assert response.status_code == 200
-    assert response.json()["status"] == "transcribed"
+    job_id = response.json()["job_id"]
+    _process_next_job(db)
+    assert client.get(f"/api/v1/jobs/{job_id}", headers=headers).json()["status"] == "completed"
     transcript = db.query(Transcript).filter_by(meeting_id=meeting_id).one()
     assert transcript.redacted_text == "[00:00:02] We agreed to publish the report."
     assert transcript.content_hash == "uploaded-transcript-hash"
@@ -243,6 +260,10 @@ def test_minutes_approval_creates_follow_up_tasks_and_activity(workflow_client, 
         f"/api/v1/meetings/{meeting_id}/minutes", headers=headers
     )
     assert draft_response.status_code == 200
+    _process_next_job(db)
+    draft_response = client.get(
+        f"/api/v1/meetings/{meeting_id}/minutes", headers=headers
+    )
     draft = draft_response.json()
     assert draft["action_items"][0]["title"] == "Prepare the report"
     assert db.query(ActionItem).filter_by(meeting_id=meeting_id).count() == 1
@@ -261,8 +282,13 @@ def test_minutes_approval_creates_follow_up_tasks_and_activity(workflow_client, 
         f"/api/v1/meetings/{meeting_id}/minutes/approve", headers=chairman_headers
     )
     assert approval_response.status_code == 200
-    assert approval_response.json()["action_count"] == 1
-    assert approval_response.json()["distribution_status"] == "distributed"
+    approval_job_id = approval_response.json()["job_id"]
+    _process_next_job(db)
+    completed_job = client.get(
+        f"/api/v1/jobs/{approval_job_id}", headers=chairman_headers
+    ).json()
+    assert completed_job["status"] == "completed"
+    assert completed_job["result"]["distribution"]["status"] == "distributed"
     assert db.query(ActionItem).filter_by(meeting_id=meeting_id).count() == 1
     action = db.query(ActionItem).filter_by(meeting_id=meeting_id).one()
     assert action.source_timestamp == "00:00:10"
@@ -274,14 +300,17 @@ def test_minutes_approval_creates_follow_up_tasks_and_activity(workflow_client, 
         f"/api/v1/meetings/{meeting_id}/minutes/approve", headers=chairman_headers
     )
     assert retry_response.status_code == 200
-    assert retry_response.json()["action_count"] == 1
-    assert retry_response.json()["distribution_status"] == "already_distributed"
+    retry_job_id = retry_response.json()["job_id"]
+    _process_next_job(db)
+    assert client.get(
+        f"/api/v1/jobs/{retry_job_id}", headers=chairman_headers
+    ).json()["result"]["distribution"]["status"] == "already_distributed"
     assert db.query(ActionItem).filter_by(meeting_id=meeting_id).count() == 1
     assert len(delivery_keys) == 3
 
 
 def test_agenda_api_uses_editable_items_contract(workflow_client, monkeypatch):
-    client, _, meeting_id = workflow_client
+    client, db, meeting_id = workflow_client
     monkeypatch.setattr(
         agendas_route,
         "run_agenda_agent",
@@ -306,7 +335,8 @@ def test_agenda_api_uses_editable_items_contract(workflow_client, monkeypatch):
 
     response = client.get(f"/api/v1/meetings/{meeting_id}/agenda", headers=headers)
     assert response.status_code == 200
-    agenda = response.json()
+    _process_next_job(db)
+    agenda = client.get(f"/api/v1/meetings/{meeting_id}/agenda", headers=headers).json()
     assert agenda["items"][0]["title"] == "Review progress"
 
     agenda["items"][0]["title"] = "Review completed work"

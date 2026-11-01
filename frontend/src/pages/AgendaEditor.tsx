@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { CheckCircle2, Plus, Trash2 } from "lucide-react";
-import { api } from "../api/client";
+import { api, waitForJob } from "../api/client";
 import { AppShell } from "../components/AppShell";
 import { MeetingWorkLinks } from "../components/MeetingWorkLinks";
 import { StageTracker } from "../components/StageTracker";
@@ -52,6 +52,7 @@ export const AgendaEditor: React.FC = () => {
   const [approving, setApproving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [jobProgress, setJobProgress] = useState("");
 
   useEffect(() => {
     fetchAgenda();
@@ -61,7 +62,10 @@ export const AgendaEditor: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.get<Agenda>(`/meetings/${id}/agenda`);
+      const response = await api.get<Agenda | { job_id: number }>(`/meetings/${id}/agenda`);
+      const data = "job_id" in response
+        ? await waitForJob<Agenda>(response.job_id, setJobProgress)
+        : response;
       setAgenda(data);
     } catch (err: any) {
       setError(err.message || "Could not load meeting agenda.");
@@ -165,6 +169,10 @@ export const AgendaEditor: React.FC = () => {
         )
       }
     >
+      {loading && <div className="loading-bar" />}
+      {loading && jobProgress && (
+        <p role="status" aria-live="polite" className="text-12 text-ink-soft">{jobProgress}</p>
+      )}
       <div className="space-y-6">
         {/* Status header & StageTracker */}
         {agenda && (

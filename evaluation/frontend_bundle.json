@@ -1,0 +1,154 @@
+{
+  "dist_exists": true,
+  "index_html_bytes": 863,
+  "total_bundle_size_kb": 367.49,
+  "assets": [
+    {
+      "name": "vendor-U9N0G1Ke.js",
+      "size_kb": 158.88,
+      "size_bytes": 162698,
+      "type": "js"
+    },
+    {
+      "name": "index-Dj4KXueG.css",
+      "size_kb": 35.44,
+      "size_bytes": 36289,
+      "type": "css"
+    },
+    {
+      "name": "NewMeeting-DMs5dElQ.js",
+      "size_kb": 20.32,
+      "size_bytes": 20807,
+      "type": "js"
+    },
+    {
+      "name": "AppShell-2PNS0shp.js",
+      "size_kb": 17.51,
+      "size_bytes": 17935,
+      "type": "js"
+    },
+    {
+      "name": "MinutesReview-Bje7cyrR.js",
+      "size_kb": 14.07,
+      "size_bytes": 14409,
+      "type": "js"
+    },
+    {
+      "name": "Dashboard-DxT_mlW8.js",
+      "size_kb": 12.98,
+      "size_bytes": 13289,
+      "type": "js"
+    },
+    {
+      "name": "Schedule-BX9Hdr-u.js",
+      "size_kb": 12.65,
+      "size_bytes": 12950,
+      "type": "js"
+    },
+    {
+      "name": "ActionTracker-DzSvkhen.js",
+      "size_kb": 12.16,
+      "size_bytes": 12448,
+      "type": "js"
+    },
+    {
+      "name": "MeetingDetails-DfsNqyvs.js",
+      "size_kb": 11.06,
+      "size_bytes": 11321,
+      "type": "js"
+    },
+    {
+      "name": "Admin-DBtao4vm.js",
+      "size_kb": 9.85,
+      "size_bytes": 10087,
+      "type": "js"
+    },
+    {
+      "name": "Evaluations-DCCo6C8k.js",
+      "size_kb": 8.87,
+      "size_bytes": 9081,
+      "type": "js"
+    },
+    {
+      "name": "TraceViewer-KLnlockE.js",
+      "size_kb": 8.24,
+      "size_bytes": 8435,
+      "type": "js"
+    },
+    {
+      "name": "MeetingsList-CvLGzNP4.js",
+      "size_kb": 8.02,
+      "size_bytes": 8216,
+      "type": "js"
+    },
+    {
+      "name": "index-91Tl2UnR.js",
+      "size_kb": 7.84,
+      "size_bytes": 8032,
+      "type": "js"
+    },
+    {
+      "name": "AgendaEditor-CQzlwusd.js",
+      "size_kb": 7.76,
+      "size_bytes": 7950,
+      "type": "js"
+    },
+    {
+      "name": "Profile-D9AiRhJ3.js",
+      "size_kb": 7.1,
+      "size_bytes": 7266,
+      "type": "js"
+    },
+    {
+      "name": "MemoryChat-B87LmSJi.js",
+      "size_kb": 5.15,
+      "size_bytes": 5277,
+      "type": "js"
+    },
+    {
+      "name": "Login-BU1e9tZx.js",
+      "size_kb": 3.96,
+      "size_bytes": 4052,
+      "type": "js"
+    },
+    {
+      "name": "StageTracker-CigQ8PcV.js",
+      "size_kb": 2.23,
+      "size_bytes": 2287,
+      "type": "js"
+    },
+    {
+      "name": "ThemeToggle-CFAxzBy6.js",
+      "size_kb": 0.83,
+      "size_bytes": 846,
+      "type": "js"
+    },
+    {
+      "name": "MeetingWorkLinks-Bp0Ghtiq.js",
+      "size_kb": 0.67,
+      "size_bytes": 682,
+      "type": "js"
+    },
+    {
+      "name": "external-link-CeJ9yHF8.js",
+      "size_kb": 0.41,
+      "size_bytes": 422,
+      "type": "js"
+    },
+    {
+      "name": "circle-check-CSsS8XEE.js",
+      "size_kb": 0.34,
+      "size_bytes": 344,
+      "type": "js"
+    },
+    {
+      "name": "plus-DdfFEEey.js",
+      "size_kb": 0.32,
+      "size_bytes": 325,
+      "type": "js"
+    }
+  ],
+  "modules_transformed": 1509,
+  "build_tool": "Vite 5.4.21 + TypeScript 5.6",
+  "largest_asset": "vendor-U9N0G1Ke.js"
+}

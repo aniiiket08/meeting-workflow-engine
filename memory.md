@@ -61,16 +61,30 @@ Attempts of 3 or more on one task means stop and ask the user to clarify the req
 
 | Field | Value |
 | --- | --- |
-| **Last updated** | 2026-10-17 |
-| **Current phase** | Phase 6 — Visibility, evaluation, safety, demo |
-| **Current task** | P6-T11 Complete Frontend UI/UX Redesign & Modern Editorial Design System |
+| **Last updated** | 2026-11-01 |
+| **Current phase** | Precision tightening, persistent jobs, and verification |
+| **Current task** | Consolidate the duplicate project progress log into memory.md |
 | **Status** | NEEDS REVIEW |
-| **Files being touched** | frontend/src/index.css, frontend/src/components/AppShell.tsx, frontend/src/components/CommandPalette.tsx, frontend/src/pages/*, frontend/src/main.tsx |
-| **Next task** | User browser verification across all roles (Chairman, Coordinator, Student) and responsive breakpoints |
-| **Blockers** | None |
+| **Files being touched** | memory.md, Meeting Organizer Agent — memory.md |
+| **Next task** | Re-run the full benchmark when Gemini is available; obtain the requested real-transcript fixtures; review job delivery state and persistence on target host |
+| **Blockers** | Latest live benchmark completed 9/10; meeting 5 failed with Gemini HTTP 503. Both real-transcript fixtures are absent. No endpoint-specific pre-change timings or deployed timings are available. SMTP outcomes during a crash are retained as uncertain and require manual reconciliation rather than blind resend. |
 | **Open questions for user** | None |
 
 ---
+
+### Consolidated historical snapshot
+
+The duplicate `Meeting Organizer Agent — memory.md` contained the same progress-log history as this file, plus a project-state snapshot dated 2026-10-17. Its snapshot is retained here for history; it is superseded by the current state above:
+
+| Field | Historical value (2026-10-17) |
+| --- | --- |
+| Current phase | Phase 6 — Visibility, evaluation, safety, demo |
+| Current task | P6-T11 Complete Frontend UI/UX Redesign & Modern Editorial Design System |
+| Files being touched | frontend/src/index.css, frontend/src/components/AppShell.tsx, frontend/src/components/CommandPalette.tsx, frontend/src/pages/*, frontend/src/main.tsx |
+| Next task | User browser verification across all roles (Chairman, Coordinator, Student) and responsive breakpoints |
+| Blockers | None |
+
+The historical K3 entry said no usable LLM key was configured; this was superseded by the verified header-only Gemini request on 2026-11-01. The current K3 entry below reflects the remaining fixture blocker.
 
 ## 4. Phase overview
 
@@ -365,7 +379,7 @@ Every file created or significantly changed. One line per file, newest status wi
 | --- | --- | --- | --- | --- |
 | K1 | Reminder escalation is checked during workflow invocation but has no periodic scheduler | backend/app/agents/reminder.py | Medium | Open |
 | K2 | SMTP credentials/host and WeasyPrint are unavailable, so successful real email/PDF delivery could not be verified | backend/app/services/email_service.py | Medium | Open |
-| K3 | Requested sample transcript and gold JSON are absent; no usable LLM key is configured, so the 3-decision/6-action regression and live Minutes/Agenda extraction cannot run | data/sample_meeting_transcript.txt, data/sample_meeting_gold.json | High | Open |
+| K3 | Requested sample transcript and gold JSON are absent, so the 3-decision/6-action regression cannot run; a header-only live Gemini request did succeed | data/sample_meeting_transcript.txt, data/sample_meeting_gold.json | High | Open |
 | K4 | faster-whisper is not installed and no real audio fixture is present; actual speech recognition could not be run | backend/app/services/stt.py | Medium | Open |
 | K6 | MCP allow-list/unit behavior is verified, but no external MCP client session was available | backend/mcp_server/server.py | Low | Open |
 
@@ -377,6 +391,11 @@ One entry per working session, newest at the top.
 
 | Date | Tasks touched | Result | Next step |
 | --- | --- | --- | --- |
+| 2026-11-01 | SQLite backup and migrations | Backed up `sql_app.db` to `sql_app.backup.db`; ran `PYTHONPATH=backend python -m alembic upgrade head`; current revision `015_reminder_delivery_state (head)`. Both sample fixtures are missing, so the regression test was not run. Status: NEEDS REVIEW. | Provide `data/sample_meeting_transcript.txt` and `data/sample_meeting_gold.json` to run the regression. |
+| 2026-11-01 | Consolidate duplicate progress log | Compared both memory files: all progress-log entries from `Meeting Organizer Agent — memory.md` were already present in `memory.md`; retained its unique 2026-10-17 state snapshot and noted its superseded K3 blocker here. Removed the redundant duplicate file after preserving that unique information. Status: NEEDS REVIEW. | Continue tracking work in this single `memory.md`; keep all project statuses at NEEDS REVIEW until user review. |
+| 2026-11-01 | Precision tightening, durable async jobs, frontend polling, and verification | Tightened explicit action/decision criteria, corrected duplicate quote timestamps, merged duplicate tasks and applied deadline corrections; diagnosed all 14 pre-change false positives in evaluation_report.md. Added persistent jobs, worker retries/recovery, owner/meeting-authorized GET /jobs/{id}, queued scheduling/confirmation/transcription/minutes/agenda/distribution paths, and frontend polling with job progress and thin loading line. Kept transcript/minutes/agenda DB writes in the same transaction as job completion to prevent duplicate results on retried work. Added SMTP attempt-state records so ambiguous outcomes are not blindly resent. Alembic head verified at 015_reminder_delivery_state. Live benchmark: 9/10 completed; meeting 5 failed with Gemini HTTP 503; completed subset actions 6/0/0 and decisions 3/0/0, not a full-dataset score. Both real-transcript fixtures absent. Source TestClient async enqueue p50: start 6.91 ms, confirm 6.63 ms, transcript paste 6.68 ms, approval 6.61 ms, distribution 5.88 ms, agenda 5.08 ms. Final verification: backend suite 194 passed, 1 skipped, 4 warnings in 34.86 s; frontend production build passed in 11.01 s; compileall passed. All changes NEEDS REVIEW. | Retry benchmark after provider recovery; obtain fixtures; review ambiguous SMTP state and deployment storage. |
+| 2026-11-01 | Final fixes and verification | Copied the existing 403-line progress log into memory.md without deleting the original. Verified one Gemini request using only x-goog-api-key: HTTP 200 in 8.217s. Ran the live 10-meeting benchmark: actions TP/FP/FN 6/8/1, P/R/F1 0.4286/0.8571/0.5714; decisions 3/6/0, 0.3333/1.0000/0.5000; 29 LLM calls, 22,735 total tokens. Both real-transcript fixtures are missing; regression test skipped. Measured local endpoints and verified current-source request timing log/header. Added prompt-versioned cache keys, cache-independent mocked transport tests, removed duplicate startup handler, corrected Gemini-security documentation/results, and updated progress text. Backend suite: 187 passed, 1 skipped; frontend build passed. Status: NEEDS REVIEW. No deployment or database-host change. Async job persistence/polling remains incomplete; deployed timings/persistence unknown. git diff --check still reports pre-existing whitespace in email_service.py, eval_harness.py, and client.ts. | Implement durable asynchronous jobs and polling only after a retry-safe persistence design; obtain transcript fixtures for regression validation. |
+| 2026-11-01 | Full-Stack Performance, Reliability, Evaluation & Deployment Optimization Fixes | Fixed PDF generation in email_service.py to eliminate fake placeholder bytes and raise typed ToolError; hardened distribution.py to record 'PDF unavailable' and deliver .ics invite; hardened Gemini API in llm.py, bench_llm_quality.py, bench_workflow.py to strictly use x-goog-api-key header and eliminate key-in-URL and logging exposure; implemented greedy bipartite 1-to-1 matching in evals/matching.py and separated decision vs action metrics; expanded scripted benchmark to 10 meetings covering 7 edge cases; expanded memory evaluation to 12 queries reporting P@1, P@3, R@3 distinguishing tuned vs unseen; added /health (DB ping) and /ready endpoints; added DB indexes on meetings and action_items; code-split frontend with React.lazy and Suspense reducing vendor bundle to 162.7 KB (53.1 KB gzip); cleaned evaluation_report.md, benchmark_comparison.csv, resume_metrics.md of unsupported claims and p-values. Backend unit tests 181 passed. Frontend build passes clean. Status: NEEDS REVIEW. | Await user review and confirmation. Do not deploy without approval. |
 | 2026-10-17 | P6-T11 Modern Editorial UI Redesign (AppShell, CommandPalette, all 13 pages, Kanban, dark/light theme, build & browser subagent validation; refined topbar date & removed duplicate CTA; fixed student name consistency and robust JSON rendering in Trace Viewer) | Complete UI/UX redesign according to Modern Editorial visual identity (Libre Baskerville serif headers, Jost sans UI, IBM Plex Mono metadata/code, warm paper/ink/brick-red palettes). AppShell layout with collapsible rail, breadcrumb trail, live date, Omnibar, and quick action. CommandPalette (Ctrl+K) for global navigation and direct meeting lookup. Complete role-tailored dashboards and pages: Home, Meetings List, Meeting Details Dossier, New Meeting Wizard, Schedule Grid, Agenda Editor, Minutes Review with transcript drawer, Action Tracker (Table + Kanban), Memory Chat, Agent Traces inspector, Golden Evaluations dashboard, Admin room/user directory, and Profile/Role switcher. User requested clearing all test meetings, removing redundant + New Meeting button from topbar, fixing student names to first name consistency (e.g., 'Aniket' instead of 'Aniket Deshmukh', 'Sujal' instead of 'Sujal Patil'), and fixing TraceViewer JSON payload inspector parsing. Strict TypeScript clean (`npm run build` 0 errors, 8.54s). Status: NEEDS REVIEW. | User browser verification and sign-off on Modern Editorial redesign. |
 | 2026-10-05 | Remove OpenRouter (llm.py, config.py, .env, .env.example, test_agent_audit.py, test_sample_meeting_regression.py) | OpenRouter branch, _stream_openrouter(), all OPENROUTER_* config fields, six env vars removed. LLM_PROVIDER Literal now accepts only "anthropic". Startup model_validator added. OpenRouter stream test replaced with Anthropic call test + unsupported-provider test + config-validation tests. Test suite passes (live-LLM and sample-regression tests still skip due to absent key/fixtures). | User to set ANTHROPIC_API_KEY in .env and confirm one live call; provide sample transcript/gold when ready. |
 | 2026-10-05 | P1-T6-UI Visual polish (all frontend screens) | Full editorial visual polish pass. New components: CommandPalette, ThemeToggle, PageFooter, StageTracker, useTheme. Rebuilt all 6 pages: 44px serif titles, count-up stats, day-strip slot picker, stage tracker, minutes document with transcript drawer and print stylesheet, monograms, progress rules, float-label inputs, page-load fade-ups, reduced-motion kill, error banners with retry, empty-ghost outlines, slim footer on every page. Build passes. Status: NEEDS REVIEW. | User to verify screens at 1280px and 390px, light and dark, reduced-motion. Confirm or request changes. |

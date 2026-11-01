@@ -17,17 +17,51 @@ T = TypeVar("T", bound=BaseModel)
 class LLMService:
     """Provider-agnostic LLM client wrapper with Pydantic schema validation and repair retry."""
 
-    def __init__(self):
+    def __init__(self, use_cache: bool = True):
         self.model = settings.LLM_MODEL
         self.gemini_key = settings.GEMINI_API_KEY
+        self.use_cache = use_cache
 
     def _call_raw_llm(self, prompt: str, system_prompt: str = "") -> str:
-        """Call Google Gemini and return its generated text."""
+        """Call Google Gemini and return its generated text.
+
+        Checks the DB-backed LLM cache before making a network call.
+        Stores the response in cache on success.
+        """
         if not self.gemini_key or self.gemini_key == "your_gemini_api_key_here":
             message = "Gemini API key is not configured. Set GEMINI_API_KEY in .env."
             logger.error(message)
             record_tool_call("llm.gemini", {"model": self.model}, {"error": message}, "failed")
             raise LLMError(message, model=self.model)
+
+        # ── Cache lookup ──────────────────────────────────────────────────────
+        _cache_key = None
+        if self.use_cache:
+            try:
+                from app.db.session import SessionLocal  # noqa: PLC0415
+                from app.services.llm_cache import (  # noqa: PLC0415
+                    PROMPT_VERSION,
+                    get_cached,
+                    make_cache_key,
+                )
+                _cache_key = make_cache_key(
+                    self.model,
+                    system_prompt,
+                    prompt,
+                    PROMPT_VERSION,
+                )
+                _db = SessionLocal()
+                try:
+                    cached = get_cached(_db, _cache_key)
+                    if cached is not None:
+                        record_tool_call("llm.gemini", {"model": self.model, "cache": "hit"}, {})
+                        return cached
+                finally:
+                    _db.close()
+            except Exception as _cache_exc:  # noqa: BLE001
+                # Cache errors must never block the LLM call
+                logger.debug("LLM cache lookup skipped: %s", _cache_exc)
+                _cache_key = None
 
         body: dict[str, Any] = {
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
@@ -44,16 +78,27 @@ class LLMService:
                 "https://generativelanguage.googleapis.com/v1beta/models/"
                 f"{self.model}:generateContent"
             )
+            headers = {
+                "Content-Type": "application/json",
+                "x-goog-api-key": self.gemini_key,
+            }
+            start_time = time.time()
             for attempt in range(3):
                 try:
                     response = httpx.post(
                         endpoint,
-                        headers={"x-goog-api-key": self.gemini_key},
                         json=body,
+                        headers=headers,
                         timeout=60.0,
                     )
                     response.raise_for_status()
                     break
+                except httpx.TimeoutException as exc:
+                    elapsed = time.time() - start_time
+                    logger.error("Gemini API call timed out after %.2fs on attempt %d", elapsed, attempt + 1)
+                    if attempt == 2:
+                        raise LLMError(f"Gemini API timed out after {elapsed:.2f}s", model=self.model) from exc
+                    time.sleep(2**attempt)
                 except httpx.HTTPStatusError as exc:
                     if exc.response.status_code not in {429, 500, 502, 503, 504} or attempt == 2:
                         raise
@@ -82,17 +127,34 @@ class LLMService:
             usage = data.get("usageMetadata", {})
             usage_tokens = usage.get("totalTokenCount")
             reasoning_tokens = usage.get("thoughtsTokenCount")
+            prompt_tokens = usage.get("promptTokenCount")
+            completion_tokens = usage.get("candidatesTokenCount")
             record_token_usage(usage_tokens, reasoning_tokens)
             record_tool_call(
                 "llm.gemini",
                 {"model": self.model},
                 {"usage_tokens": usage_tokens, "reasoning_tokens": reasoning_tokens},
             )
+
+            # ── Cache store ───────────────────────────────────────────────────
+            if _cache_key and self.use_cache:
+                try:
+                    from app.db.session import SessionLocal as _SL  # noqa: PLC0415
+                    from app.services.llm_cache import set_cache as _sc  # noqa: PLC0415
+                    _db2 = _SL()
+                    try:
+                        _sc(_db2, _cache_key, content, prompt_tokens, completion_tokens)
+                    finally:
+                        _db2.close()
+                except Exception as _cache_write_exc:  # noqa: BLE001
+                    logger.debug("LLM cache write skipped: %s", _cache_write_exc)
+
             return content
         except LLMError:
             raise
         except Exception as exc:
-            logger.exception("Gemini API call failed")
+            # Safe logging: log exception type and safe representation without headers or credential URLs
+            logger.error("Gemini API call failed: %s: %s", type(exc).__name__, exc)
             record_tool_call(
                 "llm.gemini",
                 {"model": self.model},

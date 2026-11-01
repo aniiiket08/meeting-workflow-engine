@@ -20,6 +20,7 @@ import {
 import { useAuth } from "../lib/auth";
 import { CommandPalette } from "./CommandPalette";
 import { ThemeToggle } from "./ThemeToggle";
+import { ServerWakeUpBanner } from "../api/client";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -133,6 +134,8 @@ export const AppShell: React.FC<AppShellProps> = ({
 
   return (
     <div className="app-shell">
+      {/* ── Server Wake-Up Banner ─────────────────────────────── */}
+      <ServerWakeUpBanner />
       {/* ── Mobile Drawer Backdrop ───────────────────────────── */}
       {mobileOpen && (
         <div

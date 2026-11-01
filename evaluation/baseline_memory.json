@@ -1,0 +1,203 @@
+{
+  "documents_loaded": 5,
+  "implementation": "BM25-style token frequency + IDF + recency ranking (Keyword-based)",
+  "vector_store_active": false,
+  "vector_store_note": "ChromaDB module exists in repository but active retriever is BM25-based MemoryStore",
+  "tuned_on_5_queries": {
+    "sample_size": 5,
+    "p_at_1": 0.6,
+    "p_at_3": 0.6,
+    "r_at_3": 0.6,
+    "latency_mean_ms": 0.118,
+    "latency_p50_ms": 0.09,
+    "latency_p95_ms": 0.21
+  },
+  "unseen_evaluation_7_queries": {
+    "sample_size": 7,
+    "p_at_1": 0.714,
+    "p_at_3": 0.714,
+    "r_at_3": 0.714,
+    "latency_mean_ms": 0.094,
+    "latency_p50_ms": 0.09,
+    "latency_p95_ms": 0.1
+  },
+  "combined_12_queries": {
+    "sample_size": 12,
+    "p_at_1": 0.667,
+    "p_at_3": 0.667,
+    "r_at_3": 0.667,
+    "latency_mean_ms": 0.104,
+    "latency_p50_ms": 0.09,
+    "latency_p95_ms": 0.21
+  },
+  "eval_rows": [
+    {
+      "query": "GPU cluster budget procurement",
+      "subset": "tuned_on_5_queries",
+      "latency_ms": 0.21,
+      "result_count": 1,
+      "p_at_1": 1.0,
+      "p_at_3": 1.0,
+      "r_at_3": 1.0,
+      "expected_doc_ids": [
+        101
+      ],
+      "returned_doc_ids": [
+        101
+      ]
+    },
+    {
+      "query": "room scheduling reservation booking",
+      "subset": "tuned_on_5_queries",
+      "latency_ms": 0.11,
+      "result_count": 1,
+      "p_at_1": 1.0,
+      "p_at_3": 1.0,
+      "r_at_3": 1.0,
+      "expected_doc_ids": [
+        105
+      ],
+      "returned_doc_ids": [
+        105
+      ]
+    },
+    {
+      "query": "fee payment student",
+      "subset": "tuned_on_5_queries",
+      "latency_ms": 0.09,
+      "result_count": 1,
+      "p_at_1": 0.0,
+      "p_at_3": 0.0,
+      "r_at_3": 0.0,
+      "expected_doc_ids": [],
+      "returned_doc_ids": [
+        104
+      ]
+    },
+    {
+      "query": "research publication project",
+      "subset": "tuned_on_5_queries",
+      "latency_ms": 0.09,
+      "result_count": 1,
+      "p_at_1": 0.0,
+      "p_at_3": 0.0,
+      "r_at_3": 0.0,
+      "expected_doc_ids": [],
+      "returned_doc_ids": [
+        103
+      ]
+    },
+    {
+      "query": "xyznonexistentterm000 abc999",
+      "subset": "tuned_on_5_queries",
+      "latency_ms": 0.09,
+      "result_count": 0,
+      "p_at_1": 1.0,
+      "p_at_3": 1.0,
+      "r_at_3": 1.0,
+      "expected_doc_ids": [],
+      "returned_doc_ids": []
+    },
+    {
+      "query": "student privacy and personal data redaction policy",
+      "subset": "unseen_evaluation",
+      "latency_ms": 0.09,
+      "result_count": 1,
+      "p_at_1": 1.0,
+      "p_at_3": 1.0,
+      "r_at_3": 1.0,
+      "expected_doc_ids": [
+        104
+      ],
+      "returned_doc_ids": [
+        104
+      ]
+    },
+    {
+      "query": "syllabus update for artificial intelligence safety unit",
+      "subset": "unseen_evaluation",
+      "latency_ms": 0.1,
+      "result_count": 1,
+      "p_at_1": 1.0,
+      "p_at_3": 1.0,
+      "r_at_3": 1.0,
+      "expected_doc_ids": [
+        102
+      ],
+      "returned_doc_ids": [
+        102
+      ]
+    },
+    {
+      "query": "grading rubric weights and capstone deliverables",
+      "subset": "unseen_evaluation",
+      "latency_ms": 0.09,
+      "result_count": 1,
+      "p_at_1": 1.0,
+      "p_at_3": 1.0,
+      "r_at_3": 1.0,
+      "expected_doc_ids": [
+        103
+      ],
+      "returned_doc_ids": [
+        103
+      ]
+    },
+    {
+      "query": "conflict prevention for seminar hall reservations",
+      "subset": "unseen_evaluation",
+      "latency_ms": 0.1,
+      "result_count": 1,
+      "p_at_1": 1.0,
+      "p_at_3": 1.0,
+      "r_at_3": 1.0,
+      "expected_doc_ids": [
+        105
+      ],
+      "returned_doc_ids": [
+        105
+      ]
+    },
+    {
+      "query": "procuring H100 hardware accelerator units",
+      "subset": "unseen_evaluation",
+      "latency_ms": 0.09,
+      "result_count": 1,
+      "p_at_1": 1.0,
+      "p_at_3": 1.0,
+      "r_at_3": 1.0,
+      "expected_doc_ids": [
+        101
+      ],
+      "returned_doc_ids": [
+        101
+      ]
+    },
+    {
+      "query": "quantum computing cryogenic cooling dilution refrigerator",
+      "subset": "unseen_evaluation",
+      "latency_ms": 0.09,
+      "result_count": 1,
+      "p_at_1": 0.0,
+      "p_at_3": 0.0,
+      "r_at_3": 0.0,
+      "expected_doc_ids": [],
+      "returned_doc_ids": [
+        101
+      ]
+    },
+    {
+      "query": "campus cafeteria meal plans and dining hall hours",
+      "subset": "unseen_evaluation",
+      "latency_ms": 0.1,
+      "result_count": 1,
+      "p_at_1": 0.0,
+      "p_at_3": 0.0,
+      "r_at_3": 0.0,
+      "expected_doc_ids": [],
+      "returned_doc_ids": [
+        105
+      ]
+    }
+  ]
+}

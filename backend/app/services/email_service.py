@@ -29,6 +29,7 @@ class SentReminder(Base):
     )
     sent_to_email: Mapped[str] = mapped_column(String(255), nullable=False)
     idempotency_key: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="sent", nullable=False)
 
     action_item = relationship("ActionItem")
 
@@ -80,19 +81,25 @@ class EmailService:
             raise ToolError("Email delivery failed.", tool_name="smtp.send_email") from exc
 
     def generate_pdf_minutes(self, summary: str, points: List[str]) -> bytes:
-        """Render approved minutes to a real PDF document."""
+        """Render approved minutes to a real PDF document.
+        
+        Raises ToolError when PDF generation libraries are unavailable or rendering fails.
+        Never generates placeholder or fake PDF bytes.
+        """
+        point_markup = "".join(f"<li>{escape(point)}</li>" for point in points)
+        document = (
+            "<h1>Meeting Minutes</h1><h2>Summary</h2>"
+            f"<p>{escape(summary)}</p><h2>Key discussion points</h2><ul>{point_markup}</ul>"
+        )
         try:
             from weasyprint import HTML
-
-            point_markup = "".join(f"<li>{escape(point)}</li>" for point in points)
-            document = (
-                "<h1>Meeting Minutes</h1><h2>Summary</h2>"
-                f"<p>{escape(summary)}</p><h2>Key discussion points</h2><ul>{point_markup}</ul>"
-            )
             return HTML(string=document).write_pdf()
         except Exception as exc:
-            logger.exception("Could not render minutes PDF")
-            raise ToolError("Could not generate the minutes PDF.", tool_name="pdf.render") from exc
+            logger.warning("WeasyPrint rendering unavailable: %s", exc)
+            raise ToolError(
+                f"WeasyPrint rendering unavailable: {exc}",
+                tool_name="pdf.render",
+            ) from exc
 
     def generate_ics_calendar(self, title: str, start_iso: str, end_iso: str) -> str:
         """Generate iCalendar event data with escaped text and UTC timestamps."""

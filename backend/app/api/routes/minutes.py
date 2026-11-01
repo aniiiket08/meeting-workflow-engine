@@ -1,20 +1,20 @@
 from datetime import datetime, timezone
 from typing import Any
-import hashlib
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+import base64
+from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
-from app.agents.follow_up import follow_up_graph
 from app.agents.action_tracker import prepare_draft_action_items
 from app.agents.minutes import run_minutes_agent
 from app.api.deps import get_current_user, get_db, require_meeting_access, require_roles
 from app.core.errors import NotFound, ValidationFailed
-from app.core.pii import redact_pii
 from app.db.models.agenda import Decision
 from app.db.models.meeting import Meeting, MeetingStatus
 from app.db.models.minutes import Minutes, MinutesStatus, Transcript
 from app.db.models.user import User, UserRole
+from app.services.job_worker import enqueue_job
+from app.db.models.job import Job
 from app.services.stt import stt_service
 
 router = APIRouter(prefix="/meetings", tags=["Minutes"])
@@ -31,6 +31,7 @@ def _save_minutes_from_transcript(
     db: Session,
     meeting: Meeting,
     transcript: Transcript,
+    commit: bool = True,
 ) -> Minutes:
     minutes_dict = run_minutes_agent(
         transcript_text=transcript.redacted_text,
@@ -77,8 +78,11 @@ def _save_minutes_from_transcript(
         )
     )
     meeting.status = MeetingStatus.MINUTES_DRAFTED
-    db.commit()
-    db.refresh(minutes)
+    if commit:
+        db.commit()
+        db.refresh(minutes)
+    else:
+        db.flush()
     return minutes
 
 
@@ -130,35 +134,18 @@ def upload_audio_transcript(
         raise NotFound(entity="Meeting", identifier=meeting_id)
     require_meeting_access(db, meeting, current_user)
 
-    result = stt_service.transcribe(audio_bytes, filename=file.filename)
-    redacted = redact_pii(result["text"])
-
-    transcript = db.query(Transcript).filter(Transcript.meeting_id == meeting_id).first()
-    if not transcript:
-        transcript = Transcript(
-            meeting_id=meeting_id,
-            raw_text=result["text"],
-            redacted_text=redacted,
-            language=result["language"],
-            content_hash=result["hash"],
-        )
-        db.add(transcript)
-    else:
-        transcript.raw_text = result["text"]
-        transcript.redacted_text = redacted
-        transcript.content_hash = result["hash"]
-
-    meeting.status = MeetingStatus.TRANSCRIBED
-    db.commit()
-    db.refresh(transcript)
-    minutes = _save_minutes_from_transcript(db, meeting, transcript)
-    decisions = db.query(Decision).filter(Decision.meeting_id == meeting_id).all()
-    return {
-        "status": "transcribed",
-        "transcript_id": transcript.id,
-        "redacted_text": redacted,
-        "minutes": _minutes_response(minutes, transcript, decisions),
-    }
+    job = enqueue_job(
+        db,
+        "transcript_upload",
+        current_user.id,
+        {
+            "audio_base64": base64.b64encode(audio_bytes).decode("ascii"),
+            "filename": file.filename,
+        },
+        "Transcribing audio...",
+        meeting_id=meeting_id,
+    )
+    return {"job_id": job.id, "status": job.status, "progress_text": job.progress_text}
 
 
 @router.post("/{meeting_id}/transcript/paste")
@@ -179,35 +166,15 @@ def paste_transcript(
         raise NotFound(entity="Meeting", identifier=meeting_id)
     require_meeting_access(db, meeting, current_user)
 
-    result = stt_service.process_pasted_transcript(body.text)
-    redacted = redact_pii(result["text"])
-
-    transcript = db.query(Transcript).filter(Transcript.meeting_id == meeting_id).first()
-    if not transcript:
-        transcript = Transcript(
-            meeting_id=meeting_id,
-            raw_text=result["text"],
-            redacted_text=redacted,
-            language="en",
-            content_hash=result["hash"],
-        )
-        db.add(transcript)
-    else:
-        transcript.raw_text = result["text"]
-        transcript.redacted_text = redacted
-        transcript.content_hash = result["hash"]
-
-    meeting.status = MeetingStatus.TRANSCRIBED
-    db.commit()
-    db.refresh(transcript)
-    minutes = _save_minutes_from_transcript(db, meeting, transcript)
-    decisions = db.query(Decision).filter(Decision.meeting_id == meeting_id).all()
-    return {
-        "status": "processed",
-        "transcript_id": transcript.id,
-        "redacted_text": redacted,
-        "minutes": _minutes_response(minutes, transcript, decisions),
-    }
+    job = enqueue_job(
+        db,
+        "transcript_paste",
+        current_user.id,
+        {"text": body.text},
+        "Extracting tasks...",
+        meeting_id=meeting_id,
+    )
+    return {"job_id": job.id, "status": job.status, "progress_text": job.progress_text}
 
 
 @router.get("/{meeting_id}/minutes")
@@ -227,7 +194,15 @@ def get_minutes(
     if not minutes:
         if not transcript:
             raise NotFound(entity="Transcript", identifier=meeting_id)
-        minutes = _save_minutes_from_transcript(db, meeting, transcript)
+        job = enqueue_job(
+            db,
+            "minutes_draft",
+            current_user.id,
+            {},
+            "Drafting minutes...",
+            meeting_id=meeting_id,
+        )
+        return {"job_id": job.id, "status": job.status, "progress_text": job.progress_text}
 
     decisions = db.query(Decision).filter(Decision.meeting_id == meeting_id).all()
     return _minutes_response(minutes, transcript, decisions)
@@ -257,25 +232,58 @@ def approve_minutes(
         meeting.status = MeetingStatus.MINUTES_APPROVED
         db.commit()
 
-    workflow_result = follow_up_graph.invoke(
-        {
-            "meeting_id": meeting_id,
-            "action_items": minutes.action_items_json,
-        },
-        config={"configurable": {"db": db}},
+    active_job = (
+        db.query(Job)
+        .filter(
+            Job.type == "minutes_approve",
+            Job.meeting_id == meeting_id,
+            Job.status.in_(["pending", "running"]),
+        )
+        .order_by(Job.created_at.desc())
+        .first()
     )
-
-    # Index newly approved meeting into MemoryStore for Memory Chat retrieval
-    try:
-        from app.memory.vector_store import memory_store
-        memory_store.sync_from_database(db)
-    except Exception:
-        pass
+    job = active_job or enqueue_job(
+        db,
+        "minutes_approve",
+        current_user.id,
+        {"minutes_id": minutes.id},
+        "Creating follow-up tasks...",
+        meeting_id=meeting_id,
+    )
     return {
         "status": "approved",
         "minutes_id": minutes.id,
         "content_hash": minutes.content_hash,
-        "action_count": len(workflow_result.get("action_ids", [])),
-        "distribution_status": workflow_result.get("distribution", {}).get("status"),
-        "reminders_sent": workflow_result.get("reminders_sent", 0),
+        "job_id": job.id,
+        "job_status": job.status,
+        "progress_text": job.progress_text,
     }
+
+
+@router.post("/{meeting_id}/minutes/distribute")
+def distribute_minutes(
+    meeting_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.CHAIRMAN, UserRole.PRINCIPAL)),
+):
+    meeting = db.query(Meeting).filter(Meeting.id == meeting_id).first()
+    if meeting is None:
+        raise NotFound(entity="Meeting", identifier=meeting_id)
+    require_meeting_access(db, meeting, current_user)
+    minutes = (
+        db.query(Minutes)
+        .filter(Minutes.meeting_id == meeting_id)
+        .order_by(Minutes.version.desc())
+        .first()
+    )
+    if minutes is None or minutes.status != MinutesStatus.APPROVED:
+        raise ValidationFailed("Minutes must be approved before distribution.")
+    job = enqueue_job(
+        db,
+        "minutes_distribute",
+        current_user.id,
+        {},
+        "Distributing approved minutes...",
+        meeting_id=meeting_id,
+    )
+    return {"job_id": job.id, "status": job.status, "progress_text": job.progress_text}

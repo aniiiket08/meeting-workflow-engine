@@ -65,12 +65,26 @@ def run_reminder_agent(
 
         existing = db.query(SentReminder).filter(SentReminder.idempotency_key == idempotency_key).first()
         if existing:
+            if existing.status != "sent":
+                raise ToolError(
+                    "A previous reminder email attempt has an uncertain outcome; reconcile delivery before retrying.",
+                    tool_name="email_service.send_email",
+                )
             continue
 
         subject = f"[{target_level.value.upper()}] Action Item Reminder: {item.description}"
         body = f"Hello {item.owner.name},\n\nReminder for your action item: '{item.description}' due on {item.due_date.strftime('%Y-%m-%d')}."
 
         to_email = item.owner.email
+        reminder_rec = SentReminder(
+            action_item_id=item.id,
+            level=target_level,
+            sent_to_email=to_email,
+            idempotency_key=idempotency_key,
+            status="sending",
+        )
+        db.add(reminder_rec)
+        db.commit()
         try:
             sent = email_service.send_email(
                 to_email=to_email,
@@ -79,15 +93,21 @@ def run_reminder_agent(
                 idempotency_key=idempotency_key,
             )
         except ToolError:
+            reminder_rec.status = "uncertain"
+            db.commit()
             raise
         except Exception as exc:
             logger.exception("Reminder delivery failed for action_id=%s", item.id)
+            reminder_rec.status = "uncertain"
+            db.commit()
             raise ToolError(
                 "Could not deliver an action reminder.",
                 tool_name="email_service.send_email",
             ) from exc
         if not sent:
             logger.error("Reminder delivery returned false for action_id=%s", item.id)
+            reminder_rec.status = "uncertain"
+            db.commit()
             raise ToolError(
                 "Could not deliver an action reminder.",
                 tool_name="email_service.send_email",
@@ -98,14 +118,8 @@ def run_reminder_agent(
             {"sent": True},
         )
 
-        reminder_rec = SentReminder(
-            action_item_id=item.id,
-            level=target_level,
-            sent_to_email=to_email,
-            idempotency_key=idempotency_key,
-        )
-        db.add(reminder_rec)
+        reminder_rec.status = "sent"
+        db.commit()
         sent_count += 1
 
-    db.commit()
     return {"reminders_sent": sent_count}

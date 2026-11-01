@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Mic2, Printer, UploadCloud, X } from "lucide-react";
-import { api } from "../api/client";
+import { api, useProgress, waitForJob } from "../api/client";
 import { getAuthToken } from "../lib/theme";
 import { AppShell } from "../components/AppShell";
 import { MeetingWorkLinks } from "../components/MeetingWorkLinks";
@@ -129,6 +129,8 @@ export const MinutesReview: React.FC = () => {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [progressMsg, runWithProgress] = useProgress();
+  const [jobProgress, setJobProgress] = useState("");
   const audioInputRef = useRef<HTMLInputElement>(null);
 
   // Transcript drawer
@@ -166,10 +168,13 @@ export const MinutesReview: React.FC = () => {
     setProcessing(true);
     setError(null);
     try {
-      const result = await api.post<{ minutes: MinutesData }>(
-        `/meetings/${id}/transcript/paste`,
-        { text: pasteText }
-      );
+      const result = await runWithProgress("tasks", async () => {
+        const job = await api.post<{ job_id: number }>(
+          `/meetings/${id}/transcript/paste`,
+          { text: pasteText }
+        );
+        return waitForJob<{ minutes: MinutesData }>(job.job_id, setJobProgress);
+      });
       setMinutes(result.minutes);
       setPasteText("");
       setSuccessMsg("Transcript processed. PII redacted and action items grounded.");
@@ -199,7 +204,8 @@ export const MinutesReview: React.FC = () => {
         const msg = errData?.error?.message || errData?.detail || `Upload failed (${response.status})`;
         throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
       }
-      const result = await response.json();
+      const queued = await response.json();
+      const result = await waitForJob<{ minutes: MinutesData }>(queued.job_id, setJobProgress);
       setMinutes(result.minutes);
       setAudioFile(null);
       setSuccessMsg("Audio transcribed with Whisper. PII redacted and minutes drafted.");
@@ -223,9 +229,12 @@ export const MinutesReview: React.FC = () => {
     setError(null);
     setSuccessMsg(null);
     try {
-      const res = await api.post<any>(`/meetings/${id}/minutes/approve`, {});
-      setMinutes({ ...minutes, status: "approved", content_hash: res.content_hash });
-      setSuccessMsg(`Minutes approved and locked. ${res.action_count} follow-up task(s) active.`);
+      const queued = await runWithProgress("distribution", () =>
+        api.post<any>(`/meetings/${id}/minutes/approve`, {})
+      );
+      const result = await waitForJob<any>(queued.job_id, setJobProgress);
+      setMinutes({ ...minutes, status: "approved", content_hash: queued.content_hash });
+      setSuccessMsg(`Minutes approved and locked. ${result.action_ids?.length ?? 0} follow-up task(s) active.`);
     } catch (err: any) {
       setError(err.message || "Could not approve minutes.");
     } finally {
@@ -251,6 +260,12 @@ export const MinutesReview: React.FC = () => {
                 onClick={() => openDrawerAt(null)}
                 className="btn-secondary text-11"
               >
+                {(processing || uploading || approving) && <div className="loading-bar" />}
+                {(processing || uploading || approving) && (
+                  <p role="status" aria-live="polite" className="text-12 text-ink-soft">
+                    {jobProgress || progressMsg}
+                  </p>
+                )}
                 Inspect Transcript
               </button>
             )}
@@ -406,7 +421,7 @@ export const MinutesReview: React.FC = () => {
                     disabled={processing || !pasteText.trim()}
                     className="btn-primary"
                   >
-                    {processing ? "Synthesizing Minutes…" : "Extract Decisions & Actions"}
+                    {processing ? (progressMsg || "Extracting tasks…") : "Extract Decisions & Actions"}
                   </button>
                 </form>
               </div>
@@ -571,7 +586,7 @@ export const MinutesReview: React.FC = () => {
                       disabled={approving}
                       className="btn-primary py-2.5 px-5 text-13"
                     >
-                      {approving ? "Locking & Distributing…" : "Approve & Sign Minutes"}
+                      {approving ? (progressMsg || "Sending distribution…") : "Approve & Sign Minutes"}
                     </button>
                   )}
 

@@ -1,0 +1,92 @@
+{
+  "SELECT 1 (connection overhead)": {
+    "p50_ms": 0.058,
+    "p90_ms": 0.076,
+    "p99_ms": 0.271,
+    "min_ms": 0.053,
+    "max_ms": 0.271,
+    "mean_ms": 0.065,
+    "errors": 0,
+    "n": 100
+  },
+  "User by id": {
+    "p50_ms": 0.256,
+    "p90_ms": 0.338,
+    "p99_ms": 1.444,
+    "min_ms": 0.222,
+    "max_ms": 1.444,
+    "mean_ms": 0.28,
+    "errors": 0,
+    "n": 100
+  },
+  "User by email": {
+    "p50_ms": 0.259,
+    "p90_ms": 0.357,
+    "p99_ms": 0.733,
+    "min_ms": 0.228,
+    "max_ms": 0.733,
+    "mean_ms": 0.281,
+    "errors": 0,
+    "n": 100
+  },
+  "All rooms (4 rows)": {
+    "p50_ms": 0.182,
+    "p90_ms": 0.286,
+    "p99_ms": 0.83,
+    "min_ms": 0.155,
+    "max_ms": 0.83,
+    "mean_ms": 0.207,
+    "errors": 0,
+    "n": 100
+  },
+  "All meetings (0 rows)": {
+    "p50_ms": 0.151,
+    "p90_ms": 0.249,
+    "p99_ms": 1.105,
+    "min_ms": 0.123,
+    "max_ms": 1.105,
+    "mean_ms": 0.179,
+    "errors": 0,
+    "n": 100
+  },
+  "Meetings + attendees access": {
+    "p50_ms": 0.21,
+    "p90_ms": 0.324,
+    "p99_ms": 0.841,
+    "min_ms": 0.18,
+    "max_ms": 0.841,
+    "mean_ms": 0.239,
+    "errors": 0,
+    "n": 50
+  },
+  "Minutes latest version": {
+    "p50_ms": 0.249,
+    "p90_ms": 0.335,
+    "p99_ms": 1.376,
+    "min_ms": 0.214,
+    "max_ms": 1.376,
+    "mean_ms": 0.276,
+    "errors": 0,
+    "n": 100
+  },
+  "All actions": {
+    "p50_ms": 0.143,
+    "p90_ms": 0.212,
+    "p99_ms": 1.301,
+    "min_ms": 0.121,
+    "max_ms": 1.301,
+    "mean_ms": 0.166,
+    "errors": 0,
+    "n": 100
+  },
+  "Meeting INSERT + rollback": {
+    "p50_ms": 0.911,
+    "p90_ms": 1.025,
+    "p99_ms": 3.093,
+    "min_ms": 0.805,
+    "max_ms": 3.093,
+    "mean_ms": 0.959,
+    "errors": 0,
+    "n": 50
+  }
+}

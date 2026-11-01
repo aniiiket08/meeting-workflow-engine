@@ -41,19 +41,41 @@ logger = logging.getLogger("meeting_organizer")
 # Anchored to line starts; case-insensitive.  When a line matches, the whole
 # line becomes a candidate verbatim quote.
 _COMMITMENT_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"i(?:\'?ll|\'?m going to|\'? will)\b", re.IGNORECASE),
-    re.compile(r"\bwe(?:\'?ll|\'? will| need to| should| are going to)\b", re.IGNORECASE),
-    re.compile(r"\bneeds? to\b", re.IGNORECASE),
-    re.compile(r"\bhas to\b", re.IGNORECASE),
-    re.compile(r"\bmust\b", re.IGNORECASE),
-    re.compile(r"\bnext (?:step|priority|we)\b", re.IGNORECASE),
-    re.compile(r"\bpriority\b", re.IGNORECASE),
-    re.compile(r"\blet(?:\'?s)?\s+(?:build|add|finish|complete|integrate|create|make)\b", re.IGNORECASE),
-    re.compile(r"\b(?:build|add|finish|complete|integrate|create)\s+\w", re.IGNORECASE),
-    re.compile(r"\b(?:will be|needs to be|has to be)\s+(?:built|finished|integrated|added|completed|done)\b", re.IGNORECASE),
-    re.compile(r"\b(?:action|task|todo|to-do|follow.?up)\b", re.IGNORECASE),
-    re.compile(r"\bby\s+(?:friday|monday|tuesday|wednesday|thursday|saturday|sunday|end of|next week|eod|eow)\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:i['’]?ll|i will|i am going to|we will|we['’]ll|"
+        r"we (?:still )?need to)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\b(?:someone|you|he|she|they)\s+needs? to\b", re.IGNORECASE),
+    re.compile(r"\b[A-Z][A-Za-z'-]+\s+will\b"),
+    re.compile(r"\byou handle\b", re.IGNORECASE),
+    re.compile(r"\bneeds? to be (?:done|completed|built|finished|sent|submitted)\b", re.IGNORECASE),
+    re.compile(r"\b(?:please|assigned to)\s+[A-Z][A-Za-z'-]*\b"),
+    re.compile(r"\bmust be (?:done|completed|built|finished|sent|submitted)\b", re.IGNORECASE),
 ]
+
+_ACTION_VERBS = re.compile(
+    r"\b(?:add|assign|build|compile|complete|create|draft|fix|implement|install|"
+    r"label|make|organize|order|prepare|procure|review|send|submit|update|write|"
+    r"finali[sz]e|integrate|finish|deliver|schedule)\w*\b",
+    re.IGNORECASE,
+)
+_DECLINED_ACTION = re.compile(
+    r"\b(?:out of scope|officially rejected|declined|voted no|not proceed|"
+    r"will not|won't|skip this|no action)\b",
+    re.IGNORECASE,
+)
+_DECISION_LANGUAGE = re.compile(
+    r"\b(?:we decided|let['’]?s go with|let us go with|agreed|approved|"
+    r"that['’]?s the decision|officially rejected|voted (?:no|in favor|for|against)|"
+    r"vote in favor|vote no)\b",
+    re.IGNORECASE,
+)
+_DEADLINE_CORRECTION = re.compile(
+    r"\bmake that\s+(?P<deadline>(?:next\s+)?(?:monday|tuesday|wednesday|thursday|"
+    r"friday|saturday|sunday|today|tomorrow|this afternoon|next week))\s+instead\b",
+    re.IGNORECASE,
+)
 
 _NOISE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"^\s*\[\d{2}:\d{2}:\d{2}\]\s*(?:hi|hello|good (?:morning|afternoon|evening)|thank(?:s| you)|welcome|alright|okay|ok|sure|great|sounds good)\W*$", re.IGNORECASE),
@@ -177,8 +199,11 @@ def _llm_sweep(
         if not chunk_text.strip():
             continue
         prompt = (
-            f"Review these transcript lines and list every commitment, development priority, "
-            f"or statement that implies future work that was NOT already caught by keyword scanning.\n"
+            f"Find only explicit, uncompleted task commitments or assignments that were NOT "
+            f"already caught by keyword scanning. Require clear ownership/commitment language "
+            f"(for example, 'I will', 'X will', 'you handle', or 'needs to be done by').\n"
+            f"Do not extract questions, proposals, opinions, priorities, discussion topics, "
+            f"status reports, past work, declined ideas, or decisions with no implementation task.\n"
             f"Already-found quotes (do not repeat):\n"
             + (
                 "\n".join(f"- {c.verbatim_quote}" for c in already_found[:20])
@@ -186,16 +211,17 @@ def _llm_sweep(
                 else "(none yet)"
             )
             + f"\n\nTranscript chunk:\n{chunk_text}\n\n"
-            f"Return ONLY new candidates the rule scanner would miss (implicit commitments, "
-            f"indirect priorities, etc.). If none, return an empty candidates list."
+            f"Return ONLY new candidates the rule scanner would miss while still meeting the "
+            f"explicit-commitment requirement. If none, return an empty candidates list."
         )
         try:
             result = llm_service.generate_structured(
                 prompt=prompt,
                 response_schema=CandidateListSchema,
                 system_prompt=(
-                    "You are a high-recall commitment extractor. "
-                    "List every implicit future-work statement. "
+                    "You are a precise action-item extractor. "
+                    "Do not infer tasks from discussion, intentions without a commitment, "
+                    "status updates, questions, or opinions. "
                     "Use exact verbatim quotes from the chunk."
                 ),
             )
@@ -247,9 +273,7 @@ def _deduplicate_candidates(
                 used[j] = True
                 # Keep the longer/clearer quote
                 if len(d.verbatim_quote) > len(c.verbatim_quote):
-                    c = d.model_copy(
-                        update={"timestamp": c.timestamp or d.timestamp}
-                    )
+                    c = d
         deduped.append(c)
     return deduped
 
@@ -284,9 +308,13 @@ def _classify_candidates(
         f"Classify each candidate commitment as a task or not.\n\n"
         f"{meeting_date_note}\n\n"
         f"Rules:\n"
-        f"- is_task = true unless the statement is clearly a question, a declined/rejected idea, "
-        f"or a report of something already completed in the past.\n"
-        f"- When unsure → is_task = true, needs_confirmation = true.\n"
+        f"- is_task = true ONLY when the quote contains an explicit commitment or assignment "
+        f"(for example 'I will', 'X will', 'you handle', 'we need to', or 'needs to be done by') "
+        f"for concrete, uncompleted work.\n"
+        f"- Questions, proposals, opinions, discussion topics, status reports, past events, "
+        f"declined ideas, policy choices, and statements of a changed/approved state are NOT tasks.\n"
+        f"- A question or suggestion does not become a task merely because it names future work.\n"
+        f"- Do not treat 'let us decide' or 'let's review' as an assignment.\n"
         f"- owner_name: ONLY if the speaker names a person ('I\\'ll', 'Arjun will', 'you handle'). "
         f"Never infer from who was speaking. Otherwise leave null.\n"
         f"- owner_email: ONLY if explicitly stated in the transcript. Otherwise null.\n"
@@ -301,7 +329,7 @@ def _classify_candidates(
         response_schema=ClassifiedBatchSchema,
         system_prompt=(
             "You are a precise meeting scribe. "
-            "Favour inclusion: keep anything that could be an action item. "
+            "Only extract concrete work with explicit commitment or assignment language. "
             "Never invent owners, emails, or due dates."
         ),
     )
@@ -336,6 +364,110 @@ def _classify_candidates(
             )
         )
     return actions
+
+
+def _filter_explicit_actions(
+    actions: list[ActionItemSchema],
+) -> list[ActionItemSchema]:
+    """Drop candidates that lack both a commitment signal and concrete work."""
+    filtered: list[ActionItemSchema] = []
+    for action in actions:
+        quote = action.source_quote
+        if _DECLINED_ACTION.search(quote):
+            continue
+        if "?" in quote:
+            continue
+        if not any(pattern.search(quote) for pattern in _COMMITMENT_PATTERNS):
+            continue
+        if not _ACTION_VERBS.search(quote):
+            continue
+        filtered.append(action)
+    return filtered
+
+
+def _filter_explicit_decisions(
+    decisions: list[dict[str, Any]],
+    transcript: str,
+) -> list[dict[str, Any]]:
+    """Keep decisions only when the source line explicitly records a decision."""
+    filtered: list[dict[str, Any]] = []
+    for decision in decisions:
+        source_quote = str(decision.get("source_quote", "")).strip()
+        source_norm = " ".join(source_quote.split()).casefold()
+        matching_line = next(
+            (
+                line
+                for line in transcript.splitlines()
+                if source_norm and source_norm in " ".join(line.split()).casefold()
+            ),
+            None,
+        )
+        if matching_line is None:
+            filtered.append(decision)
+            continue
+        if not _DECISION_LANGUAGE.search(_strip_timestamp(matching_line)):
+            continue
+        decision["source_quote"] = _strip_timestamp(matching_line)
+        decision["timestamp"] = decision.get("timestamp") or _extract_timestamp(matching_line)
+        filtered.append(decision)
+    return filtered
+
+
+def _merge_duplicate_actions(
+    actions: list[ActionItemSchema],
+    transcript: str,
+) -> list[ActionItemSchema]:
+    """Merge repeated task titles and apply an unambiguous deadline correction."""
+    merged: list[ActionItemSchema] = []
+
+    def title_tokens(action: ActionItemSchema) -> set[str]:
+        return {
+            token
+            for token in re.findall(r"\w+", action.title.casefold())
+            if token not in {"the", "a", "an", "to", "by", "and", "for", "in", "on"}
+        }
+
+    for action in actions:
+        current_tokens = title_tokens(action)
+        duplicate = next(
+            (
+                existing
+                for existing in merged
+                if current_tokens
+                and title_tokens(existing)
+                and len(current_tokens & title_tokens(existing))
+                / len(current_tokens | title_tokens(existing))
+                >= 0.6
+                and (
+                    not action.owner_name
+                    or not existing.owner_name
+                    or action.owner_name.casefold() == existing.owner_name.casefold()
+                )
+            ),
+            None,
+        )
+        if duplicate is None:
+            merged.append(action)
+        elif duplicate.due_date_relative is None and action.due_date_relative:
+            duplicate.due_date_relative = action.due_date_relative
+            duplicate.needs_confirmation = action.needs_confirmation
+
+    correction_lines = [
+        line
+        for line in transcript.splitlines()
+        if _DEADLINE_CORRECTION.search(_strip_timestamp(line))
+    ]
+    if len(merged) == 1 and len(correction_lines) == 1:
+        correction_line = correction_lines[0]
+        correction = _DEADLINE_CORRECTION.search(_strip_timestamp(correction_line))
+        if correction:
+            merged[0].due_date_relative = correction.group("deadline")
+            merged[0].source_quote = _strip_timestamp(correction_line)
+            merged[0].timestamp = _extract_timestamp(correction_line)
+            merged[0].needs_confirmation = (
+                merged[0].owner_name is None and merged[0].owner_email is None
+            )
+    return merged
 
 
 # ── Main entry point ─────────────────────────────────────────────────────────
@@ -389,7 +521,7 @@ Use null for unknown values."""
 
     decisions_dict = [d.model_dump() for d in result.decisions]
 
-    # Grounding check for decisions (unchanged)
+    decisions_dict = _filter_explicit_decisions(decisions_dict, redacted_text)
     valid_decisions, dropped_decisions = grounding_checker.verify_grounding(
         redacted_text, decisions_dict
     )
@@ -425,6 +557,8 @@ Use null for unknown values."""
 
     # ── Pass 2: classify ──────────────────────────────────────────────────────
     classified_actions = _classify_candidates(all_candidates, meeting_date_iso)
+    classified_actions = _filter_explicit_actions(classified_actions)
+    classified_actions = _merge_duplicate_actions(classified_actions, redacted_text)
 
     record_tool_call(
         "minutes_agent.pass2_classify",

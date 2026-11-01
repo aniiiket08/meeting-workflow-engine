@@ -39,11 +39,11 @@ class Meeting(Base):
     duration_minutes: Mapped[int] = mapped_column(Integer, default=60, nullable=False)
     target_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     equipment_needed: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
-    start_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    start_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     end_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     
-    organizer_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
-    room_id: Mapped[int | None] = mapped_column(ForeignKey("rooms.id"), nullable=True)
+    organizer_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    room_id: Mapped[int | None] = mapped_column(ForeignKey("rooms.id"), nullable=True, index=True)
     zoom_meeting_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     zoom_join_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     
@@ -51,6 +51,7 @@ class Meeting(Base):
         PyEnum(MeetingStatus, native_enum=False, values_callable=lambda x: [e.value for e in x]),
         default=MeetingStatus.REQUESTED,
         nullable=False,
+        index=True,
     )
 
     organizer = relationship("User", foreign_keys=[organizer_id])

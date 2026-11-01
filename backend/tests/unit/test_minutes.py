@@ -31,6 +31,9 @@ from app.agents.minutes import (
     MinutesSchema,
     _classify_candidates,
     _deduplicate_candidates,
+    _filter_explicit_actions,
+    _filter_explicit_decisions,
+    _merge_duplicate_actions,
     _rule_scan,
     run_minutes_agent,
 )
@@ -167,7 +170,65 @@ class TestRuleScan:
     def test_evaluation_scenarios_phrase_matched(self):
         transcript = "[00:11:00] Next priority is the evaluation scenarios and dashboard."
         candidates = _rule_scan(transcript)
-        assert any("evaluation" in c.verbatim_quote for c in candidates)
+        assert candidates == []
+
+
+def test_action_filter_requires_commitment_and_concrete_work():
+    actions = [
+        ActionItemSchema(
+            title="Decide the GPU budget",
+            source_quote="Let us decide on the GPU cluster budget.",
+        ),
+        ActionItemSchema(
+            title="Update the audit report",
+            source_quote="Grace: I will update the security audit report by Tuesday.",
+        ),
+        ActionItemSchema(
+            title="Stick to the web portal",
+            source_quote="Kevin: Understood, we will stick exclusively to the responsive web portal.",
+        ),
+    ]
+    assert [item.title for item in _filter_explicit_actions(actions)] == [
+        "Update the audit report"
+    ]
+
+
+def test_decisions_require_explicit_decision_language_and_full_grounding_line():
+    decisions = [
+        {"text": "Finalize roadmap", "source_quote": "We need to finalize the roadmap."},
+        {"text": "Proceed with option A", "source_quote": "We decided to proceed with option A."},
+    ]
+    filtered = _filter_explicit_decisions(
+        decisions,
+        "[00:00:01] We need to finalize the roadmap.\n"
+        "[00:00:02] We decided to proceed with option A.",
+    )
+    assert [item["text"] for item in filtered] == ["Proceed with option A"]
+    assert filtered[0]["timestamp"] == "00:00:02"
+
+
+def test_duplicate_actions_merge_and_deadline_correction_is_applied():
+    actions = [
+        ActionItemSchema(
+            title="Update security audit report",
+            due_date_relative="Tuesday",
+            source_quote="Grace: I will update the security audit report by Tuesday.",
+            timestamp="00:00:01",
+        ),
+        ActionItemSchema(
+            title="Update the security audit report",
+            source_quote="Grace: I will update the security audit report by Tuesday.",
+            timestamp="00:00:01",
+        ),
+    ]
+    merged = _merge_duplicate_actions(
+        actions,
+        "[00:00:01] Grace: I will update the security audit report by Tuesday.\n"
+        "[00:00:02] Grace: Actually, make that Wednesday instead.",
+    )
+    assert len(merged) == 1
+    assert merged[0].due_date_relative == "Wednesday"
+    assert merged[0].timestamp == "00:00:02"
 
 
 # ── New: deduplication ────────────────────────────────────────────────────────
@@ -198,6 +259,7 @@ class TestDeduplication:
         assert len(result) == 1
         # Keeps the longer/clearer quote (c2 is longer)
         assert "into the system" in result[0].verbatim_quote
+        assert result[0].timestamp == "00:03:00"
 
     def test_distinct_quotes_not_deduped(self):
         c1 = CandidateCommitmentSchema(
@@ -344,7 +406,7 @@ def _make_structure_response(monkeypatch):
 
 class TestFullPipeline:
     def test_mcp_and_eval_dashboard_captured(self, isolated_trace_db, monkeypatch):
-        """Transcript with MCP integration + evaluation dashboard → both appear as tasks."""
+        """Explicit MCP commitment is kept; an unassigned priority is not a task."""
         _make_structure_response(monkeypatch)
         result = run_minutes_agent(_MCP_EVAL_TRANSCRIPT)
 
@@ -352,9 +414,7 @@ class TestFullPipeline:
         assert any("MCP" in q for q in action_quotes), (
             f"MCP commitment not captured. Actions: {action_quotes}"
         )
-        assert any("evaluation" in q.lower() for q in action_quotes), (
-            f"Evaluation commitment not captured. Actions: {action_quotes}"
-        )
+        assert not any("evaluation" in q.lower() for q in action_quotes)
 
     def test_mcp_and_eval_tasks_are_unassigned_needs_confirmation(
         self, isolated_trace_db, monkeypatch

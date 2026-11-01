@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ExternalLink, Trash2 } from "lucide-react";
-import { api } from "../api/client";
+import { api, useProgress, waitForJob } from "../api/client";
 import { AppShell } from "../components/AppShell";
 import { MeetingWorkLinks } from "../components/MeetingWorkLinks";
 import { StageTracker } from "../components/StageTracker";
 import { useAuth } from "../lib/auth";
-
 interface Meeting {
   id: number;
   title: string;
@@ -86,6 +85,7 @@ export const MeetingDetails: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "agenda" | "minutes">("overview");
+  const [progressMsg] = useProgress();
 
   const canDiscard = user && ["chairman", "principal", "hod"].includes(user.role);
 
@@ -98,8 +98,22 @@ export const MeetingDetails: React.FC = () => {
         if (found) {
           setMeeting(found);
           // Pre-fetch agenda and minutes if available
-          api.get<Agenda>(`/meetings/${id}/agenda`).then(setAgenda).catch(() => {});
-          api.get<MinutesData>(`/meetings/${id}/minutes`).then(setMinutes).catch(() => {});
+          api.get<Agenda | { job_id: number }>(`/meetings/${id}/agenda`)
+            .then((response) =>
+              "job_id" in response ? waitForJob<Agenda>(response.job_id) : response,
+            )
+            .then(setAgenda)
+            .catch((err: Error) => setError(err.message || "Could not load agenda."));
+          api.get<MinutesData | { job_id: number }>(`/meetings/${id}/minutes`)
+            .then((response) =>
+              "job_id" in response ? waitForJob<MinutesData>(response.job_id) : response,
+            )
+            .then(setMinutes)
+            .catch((err: Error) => {
+              if (!err.message.toLowerCase().includes("transcript")) {
+                setError(err.message || "Could not load minutes.");
+              }
+            });
         } else {
           setError(`Meeting #${id} was not found.`);
         }
@@ -152,7 +166,7 @@ export const MeetingDetails: React.FC = () => {
     >
       {loading ? (
         <div className="py-12 font-serif italic text-ink-soft text-center text-15">
-          Loading meeting dossier…
+          {progressMsg || "Loading meeting dossier…"}
         </div>
       ) : error || !meeting ? (
         <div className="error-banner" role="alert">

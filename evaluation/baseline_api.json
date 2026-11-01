@@ -1,0 +1,196 @@
+{
+  "GET /health": {
+    "cold_ms": 211.5,
+    "p50_ms": 145.38,
+    "p90_ms": 149.81,
+    "min_ms": 135.19,
+    "max_ms": 149.81,
+    "mean_ms": 143.74,
+    "error_count": 0,
+    "status_codes": [
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200
+    ],
+    "n": 10
+  },
+  "GET /": {
+    "cold_ms": 145.83,
+    "p50_ms": 153.9,
+    "p90_ms": 162.45,
+    "min_ms": 132.08,
+    "max_ms": 162.45,
+    "mean_ms": 150.31,
+    "error_count": 0,
+    "status_codes": [
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200
+    ],
+    "n": 10
+  },
+  "POST /auth/login": {
+    "latency_ms": 424.99,
+    "status": 200,
+    "got_token": true
+  },
+  "POST /auth/login (bad pwd)": {
+    "status": 401
+  },
+  "GET /auth/me": {
+    "cold_ms": 159.23,
+    "p50_ms": 152.42,
+    "p90_ms": 172.08,
+    "min_ms": 140.92,
+    "max_ms": 172.08,
+    "mean_ms": 152.41,
+    "error_count": 0,
+    "status_codes": [
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200
+    ],
+    "n": 10
+  },
+  "GET /meetings": {
+    "cold_ms": 157.59,
+    "p50_ms": 150.21,
+    "p90_ms": 161.77,
+    "min_ms": 134.04,
+    "max_ms": 161.77,
+    "mean_ms": 148.99,
+    "error_count": 0,
+    "status_codes": [
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200
+    ],
+    "n": 10,
+    "payload_bytes": 2
+  },
+  "GET /rooms": {
+    "cold_ms": 154.12,
+    "p50_ms": 152.19,
+    "p90_ms": 176.2,
+    "min_ms": 145.91,
+    "max_ms": 176.2,
+    "mean_ms": 154.37,
+    "error_count": 0,
+    "status_codes": [
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200
+    ],
+    "n": 10,
+    "payload_bytes": 415
+  },
+  "GET /actions": {
+    "cold_ms": 161.48,
+    "p50_ms": 145.52,
+    "p90_ms": 160.47,
+    "min_ms": 134.73,
+    "max_ms": 160.47,
+    "mean_ms": 145.26,
+    "error_count": 0,
+    "status_codes": [
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200
+    ],
+    "n": 10
+  },
+  "GET /schedule": {
+    "cold_ms": 134.97,
+    "p50_ms": 158.59,
+    "p90_ms": 165.1,
+    "min_ms": 135.87,
+    "max_ms": 165.1,
+    "mean_ms": 154.28,
+    "error_count": 0,
+    "status_codes": [
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200
+    ],
+    "n": 10
+  },
+  "GET /agendas": {
+    "cold_ms": 160.28,
+    "p50_ms": 145.7,
+    "p90_ms": 152.78,
+    "min_ms": 127.97,
+    "max_ms": 152.78,
+    "mean_ms": 143.92,
+    "error_count": 10,
+    "status_codes": [
+      404,
+      404,
+      404,
+      404,
+      404,
+      404,
+      404,
+      404,
+      404,
+      404
+    ],
+    "n": 10
+  },
+  "GET /auth/chairman-only (chairman)": {
+    "status": 200,
+    "latency_ms": 165.6
+  },
+  "GET /auth/chairman-only (teacher=denied)": {
+    "status": 403,
+    "latency_ms": 161.68
+  }
+}

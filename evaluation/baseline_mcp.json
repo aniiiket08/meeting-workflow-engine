@@ -1,0 +1,37 @@
+{
+  "room_search:small room 10 pax": {
+    "status": "ok",
+    "latency_ms": 16.65,
+    "rooms_returned": [
+      "Auditorium",
+      "IoT Lab",
+      "STEP Hall",
+      "MB 104"
+    ]
+  },
+  "room_search:large room 150 pax": {
+    "status": "ok",
+    "latency_ms": 0.81,
+    "rooms_returned": [
+      "Auditorium"
+    ]
+  },
+  "room_search:oversized 500 pax": {
+    "status": "ok",
+    "latency_ms": 0.37,
+    "rooms_returned": []
+  },
+  "room_search:no time window (should fail)": {
+    "status": "ok",
+    "latency_ms": 0.01
+  },
+  "room_book:first": {
+    "status": "booked",
+    "latency_ms": 9.88
+  },
+  "room_book:double_booking_prevention": {
+    "status": "ok - correctly rejected",
+    "error_type": "Conflict",
+    "latency_ms": 1.08
+  }
+}

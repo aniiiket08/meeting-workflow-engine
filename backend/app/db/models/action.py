@@ -21,12 +21,12 @@ class ActionPriority(str, enum.Enum):
 class ActionItem(Base):
     __tablename__ = "action_items"
 
-    meeting_id: Mapped[int] = mapped_column(ForeignKey("meetings.id"), nullable=False)
+    meeting_id: Mapped[int] = mapped_column(ForeignKey("meetings.id"), nullable=False, index=True)
     description: Mapped[str] = mapped_column(Text, nullable=False)
-    owner_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    owner_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     owner_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     owner_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     
     priority: Mapped[ActionPriority] = mapped_column(
         PyEnum(ActionPriority, native_enum=False, values_callable=lambda x: [e.value for e in x]),
@@ -37,6 +37,7 @@ class ActionItem(Base):
         PyEnum(ActionStatus, native_enum=False, values_callable=lambda x: [e.value for e in x]),
         default=ActionStatus.PENDING,
         nullable=False,
+        index=True,
     )
     
     source_quote: Mapped[str | None] = mapped_column(Text, nullable=True)

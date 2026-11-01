@@ -334,12 +334,13 @@ def test_action_assign_request_null_owner():
 # ── Issue 9: Eval harness ground-truth count verification ───────────────────
 
 def test_eval_gold_action_counts():
-    """Verify the gold benchmark has 3 total actions across 3 meetings."""
+    """Verify the gold benchmark action counts across meetings."""
     from evals.eval_harness import GOLD_MEETINGS
 
     total_gold = sum(len(m.get("gold_actions", [])) for m in GOLD_MEETINGS)
-    # Meeting 1: 1 action, Meeting 2: 2 actions, Meeting 3: 0 actions = 3 total
-    assert total_gold == 3, f"Expected 3 gold actions, got {total_gold}"
+    # 10 scripted edge-case meetings have 7 total gold action items across all scenarios
+    assert total_gold == 7, f"Expected 7 gold actions across 10 meetings, got {total_gold}"
+    assert len(GOLD_MEETINGS) == 10
 
 
 def test_eval_match_action_logic():

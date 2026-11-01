@@ -84,9 +84,9 @@ def test_meeting_creation_and_slot_ranking(client, test_db):
     assert create_res.status_code == 200
     data = create_res.json()
     assert "meeting" in data
-    assert "slots" in data
-    assert len(data["slots"]) == 3
-    assert "reason" in data["slots"][0]
+    assert isinstance(data["job_id"], int)
+    assert data["status"] == "pending"
+    assert data["progress_text"] == "Finding meeting times..."
     meeting = test_db.query(Meeting).filter_by(id=data["meeting"]["id"]).one()
     assert meeting.target_date == target_date
     assert meeting.equipment_needed == ["projector"]
@@ -118,24 +118,20 @@ def test_confirm_slot_and_room_booking(client):
         headers=headers,
     )
     meeting_id = create_res.json()["meeting"]["id"]
-    slots = create_res.json()["slots"]
-
     # Confirm slot
     confirm_res = client.post(
         f"/api/v1/meetings/{meeting_id}/confirm",
         json={
-            "selected_start_time": slots[0]["start_time"],
-            "selected_end_time": slots[0]["end_time"],
+            "selected_start_time": "2026-11-03T10:00:00+00:00",
+            "selected_end_time": "2026-11-03T11:00:00+00:00",
         },
         headers=headers,
     )
     assert confirm_res.status_code == 200
     confirm_data = confirm_res.json()
-    assert confirm_data["meeting"]["status"] == "room_booked"
-    confirmed_start = datetime.fromisoformat(confirm_data["meeting"]["start_time"])
-    assert confirmed_start.utcoffset() == timedelta(0)
-    assert confirm_data["room_booking"]["status"] == "booked"
-    assert confirm_data["room_booking"]["room"]["name"] == "Conference Room A-101"
+    assert isinstance(confirm_data["job_id"], int)
+    assert confirm_data["status"] == "pending"
+    assert "job_id" in confirm_data
 
 
 def test_confirm_slot_zoom_online_booking(client):
@@ -153,24 +149,19 @@ def test_confirm_slot_zoom_online_booking(client):
         headers=headers,
     )
     meeting_id = create_res.json()["meeting"]["id"]
-    slots = create_res.json()["slots"]
-
     confirm_res = client.post(
         f"/api/v1/meetings/{meeting_id}/confirm",
         json={
-            "selected_start_time": slots[0]["start_time"],
-            "selected_end_time": slots[0]["end_time"],
+            "selected_start_time": "2026-11-03T10:00:00+00:00",
+            "selected_end_time": "2026-11-03T10:30:00+00:00",
             "is_online": True,
         },
         headers=headers,
     )
     assert confirm_res.status_code == 200
     confirm_data = confirm_res.json()
-    assert confirm_data["meeting"]["status"] == "room_booked"
-    assert confirm_data["room_booking"]["status"] == "online"
-    assert "zoom" in confirm_data["room_booking"]
-    assert confirm_data["meeting"]["zoom_meeting_id"] is not None
-    assert "https://zoom.us/j/" in confirm_data["meeting"]["zoom_join_url"]
+    assert isinstance(confirm_data["job_id"], int)
+    assert confirm_data["status"] == "pending"
 
 
 def test_authenticated_user_directory(client):

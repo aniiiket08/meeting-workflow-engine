@@ -28,7 +28,7 @@ def test_llm_extract_json_embedded_braces():
 def test_llm_handles_timeout_and_transport_retry(monkeypatch):
     import httpx
 
-    service = LLMService()
+    service = LLMService(use_cache=False)
     service.gemini_key = "test-key"
     attempts = 0
 
@@ -57,7 +57,7 @@ def test_llm_handles_timeout_and_transport_retry(monkeypatch):
 def test_llm_handles_rate_limit_429_retry(monkeypatch):
     import httpx
 
-    service = LLMService()
+    service = LLMService(use_cache=False)
     service.gemini_key = "test-key"
     attempts = 0
 

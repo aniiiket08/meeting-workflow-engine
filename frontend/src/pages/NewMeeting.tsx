@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Plus, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../api/client";
+import { api, waitForJob } from "../api/client";
 import { useAuth } from "../lib/auth";
 import { AppShell } from "../components/AppShell";
 import { MeetingWorkLinks } from "../components/MeetingWorkLinks";
@@ -72,6 +72,7 @@ export const NewMeeting: React.FC = () => {
 
   // ── Slot state ────────────────────────────────────────────────────────────
   const [loading, setLoading]                 = useState(false);
+  const [jobProgress, setJobProgress]         = useState("");
   const [error, setError]                     = useState<string | null>(null);
   const [createdMeetingId, setCreatedMeetingId] = useState<number | null>(null);
   const [rankedSlots, setRankedSlots]         = useState<Slot[]>([]);
@@ -161,7 +162,8 @@ export const NewMeeting: React.FC = () => {
         equipment_needed: equipmentNeeded,
       });
       setCreatedMeetingId(res.meeting.id);
-      setRankedSlots(res.slots || []);
+      const result = await waitForJob<{ slots: Slot[] }>(res.job_id, setJobProgress);
+      setRankedSlots(result.slots || []);
     } catch (err: any) {
       setError(err.message || "Could not calculate ranked meeting slots.");
     } finally {
@@ -216,12 +218,13 @@ export const NewMeeting: React.FC = () => {
     setRoomError(null);
 
     try {
-      await api.post(`/meetings/${createdMeetingId}/confirm`, {
+      const job = await api.post<{ job_id: number }>(`/meetings/${createdMeetingId}/confirm`, {
         selected_start_time: stagedSlot.start_time,
         selected_end_time: stagedSlot.end_time,
         room_id: isOnlineMeeting ? null : (selectedRoomId ?? null),
         is_online: isOnlineMeeting,
       });
+      await waitForJob(job.job_id, setJobProgress);
       navigate("/meetings");
     } catch (err: any) {
       // Surface room-specific errors in the room section
@@ -277,6 +280,10 @@ export const NewMeeting: React.FC = () => {
       pageTitle="New Meeting"
       pageSubtitle="Configure topic, select attendees, and review ranked slot proposals."
     >
+      {(loading || bookingLoading) && <div className="loading-bar" />}
+      {(loading || bookingLoading) && jobProgress && (
+        <p role="status" aria-live="polite" className="text-12 text-ink-soft">{jobProgress}</p>
+      )}
 
         {/* ── Top-level error ───────────────────────────────── */}
         {error && (
@@ -518,7 +525,7 @@ export const NewMeeting: React.FC = () => {
               </fieldset>
 
               <button type="submit" disabled={loading} className="w-full btn-primary py-3 text-14">
-                {loading ? "Finding slots…" : "Calculate best slots"}
+                {loading ? (jobProgress || "Finding slots…") : "Calculate best slots"}
               </button>
             </form>
             </div>
