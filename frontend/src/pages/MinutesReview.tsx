@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Mic2, Printer, UploadCloud, X } from "lucide-react";
-import { api, useProgress, waitForJob } from "../api/client";
+import { api, fetchWithRetry, useProgress, waitForJob } from "../api/client";
 import { getAuthToken } from "../lib/theme";
 import { AppShell } from "../components/AppShell";
 import { MeetingWorkLinks } from "../components/MeetingWorkLinks";
@@ -194,7 +194,7 @@ export const MinutesReview: React.FC = () => {
       const formData = new FormData();
       formData.append("file", audioFile);
       const token = getAuthToken();
-      const response = await fetch(`${BASE_URL}/meetings/${id}/transcript/upload`, {
+      const response = await fetchWithRetry(`${BASE_URL}/meetings/${id}/transcript/upload`, {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,

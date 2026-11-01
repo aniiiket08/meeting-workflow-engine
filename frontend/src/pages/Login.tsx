@@ -20,18 +20,63 @@ const DEV_LOGIN_ROLES = [
 ] as const;
 
 const IS_DEV = import.meta.env?.VITE_APP_ENV === "development";
+const AUTH_RETRY_DELAYS_MS = [500, 1000, 2000];
+const SERVER_UNREACHABLE_MESSAGE =
+  "The server is temporarily unreachable. Check that the backend is running, then try again.";
+
+const fetchAuth = async (
+  url: string,
+  options: RequestInit,
+  onRetry: () => void = () => {},
+): Promise<Response> => {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      const response = await fetch(url, options);
+      const proxyUnavailable =
+        response.status === 500 &&
+        response.headers.get("content-type")?.includes("text/plain");
+      if (!proxyUnavailable && ![502, 503, 504].includes(response.status)) {
+        return response;
+      }
+      if (attempt >= AUTH_RETRY_DELAYS_MS.length) {
+        throw new Error(SERVER_UNREACHABLE_MESSAGE);
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message === SERVER_UNREACHABLE_MESSAGE) {
+        throw error;
+      }
+      if (!(error instanceof TypeError)) throw error;
+      if (attempt >= AUTH_RETRY_DELAYS_MS.length) {
+        throw new Error(SERVER_UNREACHABLE_MESSAGE);
+      }
+    }
+
+    onRetry();
+    await new Promise((resolve) => setTimeout(resolve, AUTH_RETRY_DELAYS_MS[attempt]));
+  }
+};
+
+const getLoginErrorMessage = (error: unknown): string => {
+  if (error instanceof TypeError && /fetch|network/i.test(error.message)) {
+    return SERVER_UNREACHABLE_MESSAGE;
+  }
+  return error instanceof Error
+    ? error.message
+    : "The authentication service could not be reached.";
+};
 
 export const Login: React.FC = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const completeLogin = async (token: string) => {
-    const meRes = await fetch(`${API_BASE_URL}/auth/me`, {
+    const meRes = await fetchAuth(`${API_BASE_URL}/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!meRes.ok) throw new Error("Could not load profile after sign in.");
@@ -45,21 +90,26 @@ export const Login: React.FC = () => {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
+      const res = await fetchAuth(
+        `${API_BASE_URL}/auth/login`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        },
+        () => setRetrying(true),
+      );
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData?.detail || "Invalid username or password.");
       }
       const data = await res.json();
       await completeLogin(data.access_token);
-    } catch (err: any) {
-      setError(err.message || "The authentication service could not be reached.");
+    } catch (err: unknown) {
+      setError(getLoginErrorMessage(err));
     } finally {
       setLoading(false);
+      setRetrying(false);
     }
   };
 
@@ -67,21 +117,26 @@ export const Login: React.FC = () => {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/dev/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: devUsername }),
-      });
+      const res = await fetchAuth(
+        `${API_BASE_URL}/auth/dev/login`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: devUsername }),
+        },
+        () => setRetrying(true),
+      );
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData?.detail || "Could not start a development session.");
       }
       const data = await res.json();
       await completeLogin(data.access_token);
-    } catch (err: any) {
-      setError(err.message || "The authentication service could not be reached.");
+    } catch (err: unknown) {
+      setError(getLoginErrorMessage(err));
     } finally {
       setLoading(false);
+      setRetrying(false);
     }
   };
 
@@ -148,10 +203,16 @@ export const Login: React.FC = () => {
               </div>
 
               <button type="submit" disabled={loading} className="login-submit">
-                <span>{loading ? "Signing in…" : "Sign in"}</span>
+                <span>{loading ? (retrying ? "Reconnecting…" : "Signing in…") : "Sign in"}</span>
                 <span aria-hidden="true">↗</span>
               </button>
             </form>
+
+            {retrying && (
+              <p className="login-retry-status" role="status" aria-live="polite">
+                Server is waking up… retrying connection.
+              </p>
+            )}
 
             {IS_DEV && (
               <div className="login-dev-access">

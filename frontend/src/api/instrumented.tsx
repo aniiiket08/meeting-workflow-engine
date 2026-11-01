@@ -77,25 +77,70 @@ const WAKE_UP_THRESHOLD_MS = 3000;
 const BASE_URL = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api/v1`
   : "/api/v1";
+const RETRY_DELAYS_MS = [500, 1000, 2000];
+const SERVER_UNAVAILABLE_MESSAGE =
+  "The server is temporarily unreachable. Check that the backend is running, then try again.";
+
+const isProxyConnectionFailure = async (response: Response): Promise<boolean> => {
+  if (response.status !== 500 || !response.headers.get("content-type")?.includes("text/plain")) {
+    return false;
+  }
+  const body = await response.clone().text();
+  return /http proxy error|ECONNREFUSED|ECONNRESET|ETIMEDOUT|socket hang up/i.test(body);
+};
+
+const waitBeforeRetry = (attempt: number) =>
+  new Promise((resolve) => window.setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
+
+export async function fetchWithRetry(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+): Promise<Response> {
+  const method = (init.method || "GET").toUpperCase();
+  const safeToRetryNetworkError = ["GET", "HEAD", "OPTIONS"].includes(method);
+
+  for (let attempt = 0; ; attempt += 1) {
+    let response: Response;
+    try {
+      response = await fetch(input, init);
+    } catch (error) {
+      if (error instanceof TypeError && safeToRetryNetworkError && attempt < RETRY_DELAYS_MS.length) {
+        await waitBeforeRetry(attempt);
+        continue;
+      }
+      if (error instanceof TypeError && /fetch|network/i.test(error.message)) {
+        throw new Error(SERVER_UNAVAILABLE_MESSAGE);
+      }
+      throw error;
+    }
+
+    const proxyFailure = await isProxyConnectionFailure(response);
+    const temporaryGatewayFailure =
+      safeToRetryNetworkError && [502, 503, 504].includes(response.status);
+    if (!proxyFailure && !temporaryGatewayFailure) return response;
+    if (attempt >= RETRY_DELAYS_MS.length) {
+      throw new Error(SERVER_UNAVAILABLE_MESSAGE);
+    }
+    await waitBeforeRetry(attempt);
+  }
+}
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = getAuthToken();
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(options.headers as Record<string, string>),
-  };
+  const headers: Record<string, string> = { ...(options.headers as Record<string, string>) };
+  if (!(options.body instanceof FormData) && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const controller = new AbortController();
   const wakeTimer = setTimeout(() => _setWaking(true), WAKE_UP_THRESHOLD_MS);
 
   try {
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
+    const response = await fetchWithRetry(`${BASE_URL}${endpoint}`, {
       ...options,
       headers,
-      signal: controller.signal,
     });
     clearTimeout(wakeTimer);
     _setWaking(false);
@@ -120,6 +165,9 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
           message = (detail as any).message || JSON.stringify(detail);
         }
       }
+      if (response.status >= 500) {
+        throw new Error(SERVER_UNAVAILABLE_MESSAGE);
+      }
       throw new Error(message || `Request failed (${response.status})`);
     }
 
@@ -137,6 +185,8 @@ export const api = {
     request<T>(endpoint, { method: "POST", body: JSON.stringify(data) }),
   put: <T,>(endpoint: string, data: any) =>
     request<T>(endpoint, { method: "PUT", body: JSON.stringify(data) }),
+  upload: <T,>(endpoint: string, data: FormData) =>
+    request<T>(endpoint, { method: "POST", body: data }),
 };
 
 export interface JobStatus<T = unknown> {

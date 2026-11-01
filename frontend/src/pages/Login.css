@@ -157,6 +157,12 @@
   font: 400 13px/1.5 var(--font-sans);
 }
 
+.login-retry-status {
+  margin: 12px 0 0;
+  color: var(--ink-soft);
+  font: 400 12px/1.5 var(--font-sans);
+}
+
 .login-dev-access {
   margin-top: 28px;
   padding-top: 18px;

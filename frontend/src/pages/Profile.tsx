@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Shield } from "lucide-react";
 import { AppShell } from "../components/AppShell";
+import { fetchWithRetry } from "../api/client";
 import { useAuth, User } from "../lib/auth";
 
 function roleLabel(role: User["role"]): string {
@@ -50,14 +51,14 @@ export const Profile: React.FC = () => {
   const handleQuickSwitch = async (username: string) => {
     setSwitching(true);
     try {
-      const res = await fetch("/api/v1/auth/dev/login", {
+      const res = await fetchWithRetry("/api/v1/auth/dev/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username }),
       });
       if (res.ok) {
         const data = await res.json();
-        const meRes = await fetch("/api/v1/auth/me", {
+        const meRes = await fetchWithRetry("/api/v1/auth/me", {
           headers: { Authorization: `Bearer ${data.access_token}` },
         });
         if (meRes.ok) {
