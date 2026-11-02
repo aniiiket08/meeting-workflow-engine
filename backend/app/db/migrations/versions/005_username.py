@@ -6,9 +6,9 @@ Create Date: 2026-10-05 12:30:00.000000
 
 """
 from typing import Sequence, Union
-from alembic import op
-import sqlalchemy as sa
 
+import sqlalchemy as sa
+from alembic import op
 
 revision: str = "005_username"
 down_revision: Union[str, None] = "004_transcripts_and_minutes"
@@ -21,11 +21,17 @@ def upgrade() -> None:
     with op.batch_alter_table("users") as batch_op:
         batch_op.add_column(sa.Column("username", sa.String(length=64), nullable=True))
 
-    # Derive initial usernames from the email local-part. Works on SQLite
-    # (uses substr/instr instead of split_part).
+    dialect = op.get_bind().dialect.name
+    if dialect == "postgresql":
+        local_part = "split_part(email, '@', 1)"
+    elif dialect == "sqlite":
+        local_part = "substr(email, 1, instr(email, '@') - 1)"
+    else:
+        raise RuntimeError(f"Username backfill is unsupported for database dialect {dialect!r}.")
+
     op.execute(
         "UPDATE users "
-        "SET username = substr(email, 1, instr(email, '@') - 1) "
+        f"SET username = {local_part} "
         "WHERE username IS NULL OR username = ''"
     )
 

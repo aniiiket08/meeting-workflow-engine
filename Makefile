@@ -10,10 +10,10 @@ help:
 	@echo "  make demo     - Run demo mode script"
 
 up:
-	docker-compose up -d
+	docker compose up -d --build
 
 down:
-	docker-compose down
+	docker compose down
 
 test:
 	pytest

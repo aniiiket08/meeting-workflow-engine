@@ -11,7 +11,7 @@
 3. **Tools via MCP.** All external capabilities (calendar, email, rooms, DB) sit behind one MCP server.
 4. **Everything is traced.** Each agent step, prompt, tool call, latency, and token count is logged.
 5. **Grounded outputs.** Every action item and decision carries a source quote and timestamp.
-6. **Swappable parts.** LLM, STT, vector store, and calendar provider sit behind interfaces.
+6. **Swappable parts.** LLM, STT, memory retrieval, and calendar provider sit behind interfaces.
 
 ---
 
@@ -48,11 +48,11 @@ flowchart TB
   end
   subgraph DATA["Data Layer"]
     PG[(PostgreSQL / SQLite)]
-    VS[(ChromaDB - vectors)]
+    VS[(BM25 MemoryStore)]
     FS[(File Storage - audio, PDFs)]
   end
   subgraph EXT["External Services"]
-    GC[Google Calendar]
+    GC[Calendar data]
     SM[SMTP / Gmail]
     LLM[LLM API]
     WH[Whisper]
@@ -177,29 +177,28 @@ sequenceDiagram
 | API | FastAPI + Uvicorn | Async, auto OpenAPI docs, WebSockets |
 | Validation | Pydantic v2 | Typed agent I/O |
 | Orchestration | LangGraph | Explicit node graph, human-in-loop, checkpointing |
-| LLM | Claude API (provider-agnostic wrapper) | Strong structured extraction |
+| LLM | Google Gemini | Structured meeting workflows |
 | STT | faster-whisper | Local, accurate, free |
-| Embeddings | sentence-transformers (all-MiniLM-L6-v2) | Local, fast |
-| Vector DB | ChromaDB | Simple, persistent |
+| Memory retrieval | Custom BM25 `MemoryStore` | Keyword relevance and recency over meeting records |
 | Relational DB | SQLite (dev) → PostgreSQL | SQLAlchemy + Alembic migrations |
 | Tool protocol | MCP Python SDK | Rubric: MCP/tool integration |
-| Scheduler | APScheduler | Reminder jobs |
-| Calendar | Google Calendar API (OAuth2) | Real availability |
-| Email | SMTP / Gmail API | Distribution |
-| PDF | WeasyPrint / ReportLab | Minutes export |
+| Background jobs | SQLAlchemy-backed worker | Persistent job processing |
+| Calendar | Local calendar and timetable data | Availability lookup |
+| Email | SMTP | Distribution |
+| PDF | WeasyPrint | Minutes export |
 | Frontend | React + Vite + TypeScript | Dashboard |
-| UI | Tailwind + shadcn/ui | Polished fast |
-| Charts | Recharts | Health score, eval charts |
-| State/data | TanStack Query | Server state |
+| UI | Tailwind CSS | Application styling |
+| Frontend data | Custom API client and React hooks | Request handling and page state |
 | Observability | Custom trace store (+ optional Langfuse) | Trace viewer |
-| Testing | pytest, pytest-asyncio, Playwright | Unit, integration, E2E |
-| Eval | Custom harness (jiwer for WER, sklearn for F1) | Evidence of quality |
-| DevOps | Docker Compose, GitHub Actions | One-command run, CI |
-| Deploy | Render / Railway (API), Vercel (UI) | Free tiers |
+| Testing | pytest, frontend production build | Backend and frontend verification |
+| Eval | Custom harness | Evidence of quality |
+| DevOps | Docker Compose | Local services |
 
 ---
 
-## 6. Folder and File Structure
+## 6. Example Folder Structure
+
+The tree below is a conceptual target layout, not an inventory of files currently in the repository.
 
 ```
 meeting-organizer-agent/
@@ -272,7 +271,7 @@ meeting-organizer-agent/
 │   │   │   ├── tracer.py              # decorator: logs every step
 │   │   │   └── audit.py
 │   │   └── jobs/
-│   │       └── reminders.py           # APScheduler
+│   │       └── reminders.py           # conceptual reminder scheduler
 │   │
 │   ├── mcp_server/
 │   │   ├── server.py                  # MCP entrypoint
@@ -350,7 +349,7 @@ erDiagram
   MEETINGS ||--o{ AGENT_RUNS : traced_by
 ```
 
-Vectors live in ChromaDB: one chunk per speaker turn group, with `meeting_id, speaker, start_time` metadata.
+Meeting-memory retrieval currently uses the BM25 `MemoryStore` over seeded and approved meeting records; it does not use vector embeddings.
 
 ---
 
@@ -398,14 +397,14 @@ flowchart LR
   P --> M3[Hallucination rate via grounding check]
   P --> M4[Latency + token cost]
   M1 & M2 & M3 & M4 --> R[Eval report + dashboard page]
-  R --> CI[GitHub Actions regression gate]
+  R --> CI[Local regression tests]
 ```
 
 **Targets:** WER \< 15%, action F1 ≥ 0.80, hallucination \< 5%.
 
 ---
 
-## 11. Deployment
+## 11. Local Services
 
 ```mermaid
 flowchart LR

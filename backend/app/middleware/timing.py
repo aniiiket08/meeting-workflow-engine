@@ -1,6 +1,6 @@
 """
 Request timing middleware — logs method, path and elapsed_ms for every request.
-Results feed p50/p90 analysis in bench_api.py and Render dashboard log queries.
+Results feed p50/p90 analysis in bench_api.py.
 """
 import time
 
@@ -39,4 +39,3 @@ class TimingMiddleware(BaseHTTPMiddleware):
             )
 
         return response
-

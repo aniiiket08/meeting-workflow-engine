@@ -267,27 +267,20 @@ flowchart TD
 
 ---
 
-## 5. Deployed Application Performance & Render Analysis (Section 2 & 4)
+## 5. Application Performance & Runtime Analysis
 
 ### 5.1 Backend Performance & Health Endpoints
 - **Health & Readiness Endpoints:**
   - Added `GET /health` with active DB `SELECT 1` ping and configuration status.
-  - Added `GET /ready` returning HTTP 200 for deployment orchestrator liveness checks.
+  - Added `GET /ready` returning HTTP 200 for service readiness checks.
 - **Database Indexing:**
   - Added explicit database indexes on `meetings.status`, `meetings.start_time`, `meetings.organizer_id`, `action_items.meeting_id`, `action_items.status`, and `action_items.due_date` across SQLite schemas.
 - **Asynchronous Execution & Lazy Loading:**
   - Faster-Whisper STT model uses lazy module-level caching (`_get_whisper_model()`), preventing unnecessary memory allocation on boot.
 
-### 5.2 Render Deployment Architecture Analysis
-- **Cold Start Behavior (Free Tier vs Paid Tier):**
-  - *Free Tier:* Spins down after 15 minutes of inactivity. Cold start spin-up takes **45 to 60 seconds**, causing initial browser request timeouts.
-  - *Recommendation:* Upgrade to Render Starter ($7/mo) to keep the backend worker active 24/7 without cold-start penalties.
-- **SQLite Ephemeral Disk Persistence Risk:**
-  - *Risk:* Render containers run on an ephemeral filesystem. On redeployments or container restarts, local SQLite files (`sql_app.db`) are wiped, resulting in data loss.
-  - *Recommendation:* Migrate to managed PostgreSQL (e.g. Render Managed Postgres or Neon DB) using `postgresql://...` connection strings. The SQLAlchemy models are already standard-compliant.
-- **GTK / Pango System Dependencies for PDF Generation:**
-  - *Risk:* WeasyPrint requires C libraries (`libgobject-2.0-0`, `libpango-1.0-0`, `libharfbuzz0b`). Standard Python buildpacks on Render do not include these by default.
-  - *Recommendation:* Deploy backend via `Dockerfile.backend` with `apt-get install -y libpango-1.0-0 libharfbuzz0b libpangoft2-1.0-0` rather than native Python buildpack.
+### 5.2 Hosting Status
+
+No hosted environment is currently configured. Performance measurements in this report should be treated as historical and not as current production measurements.
 
 ---
 

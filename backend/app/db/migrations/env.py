@@ -1,9 +1,9 @@
 from logging.config import fileConfig
-from alembic import context
-from sqlalchemy import engine_from_config, pool
 
+from alembic import context
 from app.config import settings
 from app.db.models import Base
+from sqlalchemy import engine_from_config, pool
 
 config = context.config
 
@@ -14,7 +14,7 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    url = settings.DATABASE_URL
+    url = settings.sqlalchemy_database_url
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -28,7 +28,7 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     configuration = config.get_section(config.config_ini_section) or {}
-    configuration["sqlalchemy.url"] = settings.DATABASE_URL
+    configuration["sqlalchemy.url"] = settings.sqlalchemy_database_url
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",

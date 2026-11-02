@@ -7,5 +7,15 @@
  *
  * Existing `import { api } from "../api/client"` imports continue to work.
  */
-export { api, fetchWithRetry, ServerWakeUpBanner, useServerWakeUp, useProgress, PROGRESS_MESSAGES, waitForJob } from "./instrumented";
+export {
+  api,
+  apiUrl,
+  API_CONFIGURATION_ERROR,
+  fetchWithRetry,
+  ServerWakeUpBanner,
+  useServerWakeUp,
+  useProgress,
+  PROGRESS_MESSAGES,
+  waitForJob,
+} from "./instrumented";
 export type { JobStatus, ProgressKey } from "./instrumented";

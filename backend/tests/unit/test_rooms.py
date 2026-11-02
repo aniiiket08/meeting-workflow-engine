@@ -2,7 +2,7 @@
 
 Covers:
   - seed_database idempotency: running twice produces exactly 4 named rooms, no duplicates
-  - seed_database updates: capacity/equipment changes are applied on re-seed
+  - seed_database preserves existing user and room data on re-seed
   - RoomService.find_available_rooms: best-fit (smallest capacity that fits), equipment filter,
     capacity filter, double-booking conflict exclusion
   - run_room_booking_agent: auto best-fit path, explicit room_id path
@@ -12,25 +12,25 @@ Covers:
   - GET /rooms/availability: booked room shown as "booked", too-small as "too_small"
 """
 
-from datetime import datetime, timedelta, timezone
-from fastapi.testclient import TestClient
-import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
+from datetime import datetime, timezone
 
 import app.observability.tracer as tracer_module
+import pytest
 from app.agents.room_booking import run_room_booking_agent
 from app.api.deps import get_db
 from app.core.errors import Conflict, NotFound
 from app.core.security import get_password_hash
 from app.db.base import Base
-from app.db.models.meeting import Attendee, Meeting, MeetingStatus
+from app.db.models.meeting import Meeting, MeetingStatus
 from app.db.models.room import Room
 from app.db.models.user import User, UserRole
 from app.db.seed import seed_database
 from app.main import app
 from app.services.room_service import room_service
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 # ── Shared in-memory DB ───────────────────────────────────────────────────────
 
@@ -178,19 +178,55 @@ class TestSeedIdempotency:
         assert db.query(Room).count() == 4
         db.close()
 
-    def test_seed_updates_capacity_on_rerun(self, monkeypatch):
+    def test_seed_preserves_existing_room_and_user_data(self, monkeypatch):
         db = _make_db()
         from app.config import settings as _settings
         monkeypatch.setattr(_settings, "SEED_PASSWORD", "testpw")
         seed_database(db)
-        # Manually change IoT Lab capacity to 1
+
         iot = db.query(Room).filter_by(name="IoT Lab").first()
         iot.capacity = 1
+        iot.equipment = ["custom-equipment"]
+        chairman = db.query(User).filter_by(username="chairman").first()
+        chairman.name = "Customized Chairman"
+        chairman.email = "custom-chairman@test.local"
+        chairman.role = UserRole.TEACHER
+        chairman.hashed_password = "existing-hash"
         db.commit()
-        # Re-seed should restore it to 40
+
         seed_database(db)
         iot_after = db.query(Room).filter_by(name="IoT Lab").first()
-        assert iot_after.capacity == 40
+        chairman_after = db.query(User).filter_by(username="chairman").first()
+        assert iot_after.capacity == 1
+        assert iot_after.equipment == ["custom-equipment"]
+        assert chairman_after.name == "Customized Chairman"
+        assert chairman_after.email == "custom-chairman@test.local"
+        assert chairman_after.role == UserRole.TEACHER
+        assert chairman_after.hashed_password == "existing-hash"
+        db.close()
+
+    def test_seed_does_not_rename_legacy_student(self, monkeypatch):
+        db = _make_db()
+        from app.config import settings as _settings
+
+        monkeypatch.setattr(_settings, "SEED_PASSWORD", "testpw")
+        legacy = User(
+            name="Legacy Student",
+            username="student",
+            email="legacy-student@test.local",
+            role=UserRole.STUDENT,
+            hashed_password="existing-hash",
+        )
+        db.add(legacy)
+        db.commit()
+
+        seed_database(db)
+
+        db.refresh(legacy)
+        assert legacy.username == "student"
+        assert legacy.email == "legacy-student@test.local"
+        assert legacy.hashed_password == "existing-hash"
+        assert db.query(User).filter_by(username="aniket").count() == 1
         db.close()
 
 
@@ -221,7 +257,7 @@ class TestBestFitSelection:
     def test_best_fit_excludes_rooms_missing_required_equipment(self):
         db = _make_db()
         _seed_rooms(db)
-        # video_conf required; MB 104 and IoT Lab don't have it → only STEP Hall (100) and Auditorium (200)
+        # video_conf leaves STEP Hall (100) and Auditorium (200) as the available rooms.
         available = room_service.find_available_rooms(
             db, capacity_needed=1,
             start_time=self.START, end_time=self.END,

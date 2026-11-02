@@ -74,16 +74,26 @@ export type ProgressKey = keyof typeof PROGRESS_MESSAGES;
 
 // ── Instrumented fetch ────────────────────────────────────────────────────────
 const WAKE_UP_THRESHOLD_MS = 3000;
-const BASE_URL = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api/v1`
-  : "/api/v1";
+const configuredApiOrigin = import.meta.env.VITE_API_URL?.trim().replace(/\/+$/, "");
+const BASE_URL = configuredApiOrigin
+  ? `${configuredApiOrigin}/api/v1`
+  : import.meta.env.PROD
+    ? null
+    : "/api/v1";
 const RETRY_DELAYS_MS = [500, 1000, 2000];
 const GET_CACHE_TTL_MS = 1500;
-const SERVER_UNAVAILABLE_MESSAGE =
-  "The server is temporarily unreachable. Check that the backend is running, then try again.";
+export const API_CONFIGURATION_ERROR =
+  "The API endpoint is not configured. Set VITE_API_URL to the backend origin.";
 const getCache = new Map<string, { expiresAt: number; value: unknown }>();
 const inFlightGets = new Map<string, Promise<unknown>>();
 let cacheGeneration = 0;
+
+export function apiUrl(endpoint: string): string {
+  if (!BASE_URL) throw new Error(API_CONFIGURATION_ERROR);
+  return `${BASE_URL}${endpoint}`;
+}
+
+const isSafeToRetry = (method: string) => ["GET", "HEAD", "OPTIONS"].includes(method);
 
 const isProxyConnectionFailure = async (response: Response): Promise<boolean> => {
   if (response.status !== 500 || !response.headers.get("content-type")?.includes("text/plain")) {
@@ -99,9 +109,10 @@ const waitBeforeRetry = (attempt: number) =>
 export async function fetchWithRetry(
   input: RequestInfo | URL,
   init: RequestInit = {},
+  onRetry: () => void = () => {},
 ): Promise<Response> {
-  const method = (init.method || "GET").toUpperCase();
-  const safeToRetryNetworkError = ["GET", "HEAD", "OPTIONS"].includes(method);
+  const method = (init.method || (input instanceof Request ? input.method : "GET")).toUpperCase();
+  const safeToRetryNetworkError = isSafeToRetry(method);
 
   for (let attempt = 0; ; attempt += 1) {
     let response: Response;
@@ -109,19 +120,20 @@ export async function fetchWithRetry(
       response = await fetch(input, init);
     } catch (error) {
       if (error instanceof TypeError && safeToRetryNetworkError && attempt < RETRY_DELAYS_MS.length) {
+        onRetry();
         await waitBeforeRetry(attempt);
         continue;
       }
       if (error instanceof TypeError && /fetch|network/i.test(error.message)) {
-        throw new Error(SERVER_UNAVAILABLE_MESSAGE);
+        throw new Error("The network request failed or was blocked. Check connectivity and API CORS settings.");
       }
       throw error;
     }
 
     const proxyFailure = await isProxyConnectionFailure(response);
-    const temporaryGatewayFailure =
-      safeToRetryNetworkError && [502, 503, 504].includes(response.status);
-    if (!proxyFailure && !temporaryGatewayFailure) {
+    const retryableResponse =
+      safeToRetryNetworkError && (proxyFailure || [502, 503, 504].includes(response.status));
+    if (!retryableResponse) {
       if (!safeToRetryNetworkError && response.ok) {
         cacheGeneration += 1;
         getCache.clear();
@@ -130,8 +142,9 @@ export async function fetchWithRetry(
       return response;
     }
     if (attempt >= RETRY_DELAYS_MS.length) {
-      throw new Error(SERVER_UNAVAILABLE_MESSAGE);
+      throw new Error(`The backend is still unavailable (HTTP ${response.status}). Please try again.`);
     }
+    onRetry();
     await waitBeforeRetry(attempt);
   }
 }
@@ -149,7 +162,7 @@ async function requestUncached<T>(endpoint: string, options: RequestInit = {}): 
   const wakeTimer = setTimeout(() => _setWaking(true), WAKE_UP_THRESHOLD_MS);
 
   try {
-    const response = await fetchWithRetry(`${BASE_URL}${endpoint}`, {
+    const response = await fetchWithRetry(apiUrl(endpoint), {
       ...options,
       headers,
     });
@@ -176,8 +189,12 @@ async function requestUncached<T>(endpoint: string, options: RequestInit = {}): 
           message = (detail as any).message || JSON.stringify(detail);
         }
       }
+      if (response.status === 401) {
+        throw new Error(message || "Your session is invalid or has expired. Sign in again.");
+      }
+      if (response.status === 403) throw new Error(message || "You do not have permission to do that.");
       if (response.status >= 500) {
-        throw new Error(SERVER_UNAVAILABLE_MESSAGE);
+        throw new Error(`The server returned HTTP ${response.status}. Please try again later.`);
       }
       throw new Error(message || `Request failed (${response.status})`);
     }

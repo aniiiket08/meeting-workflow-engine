@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client";
 import { getAuthToken, removeAuthToken, setAuthToken } from "./theme";
 
@@ -48,6 +48,7 @@ function readCachedUser(): User | null {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [token, setTokenState] = useState<string | null>(getAuthToken());
   const [user, setUser] = useState<User | null>(readCachedUser);
+  const authenticatedToken = useRef<string | null>(null);
   const [loading, setLoading] = useState<boolean>(
     () => Boolean(getAuthToken()) && !readCachedUser(),
   );
@@ -58,13 +59,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
       return;
     }
+    if (authenticatedToken.current === token) {
+      setLoading(false);
+      return;
+    }
 
     api.get<User>("/auth/me")
       .then((userData) => {
+        if (getAuthToken() !== token) return;
         setUser(userData);
         localStorage.setItem(AUTH_USER_KEY, JSON.stringify(userData));
       })
       .catch((error: unknown) => {
+        if (getAuthToken() !== token) return;
         console.error("Session validation failed:", error);
         const message = error instanceof Error ? error.message : "";
         if (/Could not validate credentials|Not authenticated/i.test(message)) {
@@ -74,17 +81,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(null);
         }
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (getAuthToken() === token) setLoading(false);
+      });
   }, [token]);
 
   const login = (newToken: string, userData: User) => {
+    authenticatedToken.current = newToken;
     setAuthToken(newToken);
     localStorage.setItem(AUTH_USER_KEY, JSON.stringify(userData));
     setTokenState(newToken);
     setUser(userData);
+    setLoading(false);
   };
 
   const logout = () => {
+    authenticatedToken.current = null;
     removeAuthToken();
     localStorage.removeItem(AUTH_USER_KEY);
     setTokenState(null);

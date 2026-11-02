@@ -1,14 +1,12 @@
-import logging
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.core.logging import setup_logging
 from app.core.security import get_password_hash
-from app.db.base import Base
 from app.db.models.audit import AuditLog
 from app.db.models.room import Room
 from app.db.models.user import User, UserRole
-from app.db.session import SessionLocal, engine
+from app.db.session import SessionLocal
 
 logger = setup_logging()
 
@@ -17,24 +15,15 @@ def seed_database(db: Session) -> None:
     """Seed initial users, rooms, and audit entry.
 
     The seed password is read from the ``SEED_PASSWORD`` environment variable
-    (see ``.env.example``). Production deployments MUST set a strong value;
-    running with an empty value raises an error to avoid shipping predictable
-    credentials.
+    (see ``.env.example``). Running with an empty value raises an error to avoid
+    creating users with predictable credentials.
     """
-    Base.metadata.create_all(bind=engine)
-
     seed_password = settings.SEED_PASSWORD
     if not seed_password:
         raise ValueError(
             "SEED_PASSWORD is not set. Define it in your .env file before "
             "running the seed script (see .env.example)."
         )
-    hashed_password = get_password_hash(seed_password)
-
-    legacy_student = db.query(User).filter_by(username="student").first()
-    if legacy_student and not db.query(User).filter_by(username="aniket").first():
-        legacy_student.username = "aniket"
-
     users = [
         ("Chairman", "chairman", "chairman@university.com", UserRole.CHAIRMAN),
         ("Principal", "principal", "principal@university.com", UserRole.PRINCIPAL),
@@ -46,31 +35,38 @@ def seed_database(db: Session) -> None:
         ("Sarvesh", "sarvesh", "sarvesh@university.com", UserRole.STUDENT),
     ]
     created_users = 0
+    preserved_users = 0
+    hashed_password = None
     for name, username, email, role in users:
-        user = (
-            legacy_student
-            if username == "aniket" and legacy_student and legacy_student.username == "aniket"
-            else db.query(User).filter_by(username=username).first()
+        matching_users = (
+            db.query(User)
+            .filter((User.username == username) | (User.email == email))
+            .all()
         )
-        if user is None:
-            user = User(
+        if len(matching_users) > 1:
+            raise ValueError(f"Conflicting seeded user identity for username {username!r}.")
+        if matching_users:
+            preserved_users += 1
+            continue
+
+        if hashed_password is None:
+            hashed_password = get_password_hash(seed_password)
+        db.add(
+            User(
                 name=name,
                 username=username,
                 email=email,
                 role=role,
                 hashed_password=hashed_password,
             )
-            db.add(user)
-            created_users += 1
-        else:
-            user.name = name
-            user.email = email
-            user.role = role
-            user.hashed_password = hashed_password
+        )
+        created_users += 1
     if created_users:
         logger.info("Seeded %d missing university users.", created_users)
+    if preserved_users:
+        logger.info("Preserved %d existing university user records unchanged.", preserved_users)
 
-    # Upsert rooms by name — idempotent; read from environment_data_service (Meeting_Room_Facilities.docx)
+    # Seed missing rooms only; existing room data may have been customized.
     from app.services.environment_parser import environment_data_service
 
     desired_rooms = environment_data_service.get_room_facilities()
@@ -80,13 +76,10 @@ def seed_database(db: Session) -> None:
         if room is None:
             db.add(Room(name=spec["name"], capacity=spec["capacity"], equipment=spec["equipment"]))
             created_rooms += 1
-        else:
-            room.capacity = spec["capacity"]
-            room.equipment = spec["equipment"]
     if created_rooms:
         logger.info("Seeded %d new rooms.", created_rooms)
     else:
-        logger.info("Rooms already present; updated capacity/equipment in place.")
+        logger.info("Rooms already present; existing room data was left unchanged.")
 
     # Seed initial audit log entry
     if not db.query(AuditLog).first():

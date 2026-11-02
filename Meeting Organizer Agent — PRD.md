@@ -136,7 +136,7 @@ Orchestrated as an **explicit node graph** (LangGraph) with a human-approval nod
 | Frontend | React + Tailwind, or Streamlit for speed |
 | Charts | Recharts / Plotly |
 | Tests | pytest + custom eval scripts |
-| Deploy | Docker Compose; demo on Render/Railway |
+| Hosting | Not configured | Local-first; provider-neutral integration can be added later |
 
 ## 10. Database Schema (core tables)
 

@@ -1,16 +1,18 @@
+from datetime import timedelta
+
 from fastapi.testclient import TestClient
 import pytest
 from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.api.deps import get_db
 from app.config import settings
-from app.core.security import get_password_hash
+from app.core.security import create_access_token, get_password_hash
 from app.db.base import Base
 from app.db.models.user import User, UserRole
 from app.main import app
-
-from sqlalchemy.pool import StaticPool
 
 # In-memory SQLite DB for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -95,6 +97,8 @@ def test_login_success_with_username(client, test_db):
     data = res.json()
     assert "access_token" in data
     assert data["token_type"] == "bearer"
+    assert data["user"]["username"] == "chairman"
+    assert data["user"]["role"] == "chairman"
 
 
 def test_login_success_with_email(client, test_db):
@@ -141,6 +145,51 @@ def test_login_unknown_user(client):
         json={"username": "ghost", "password": "whatever"},
     )
     assert res.status_code == 401
+
+
+def test_invalid_and_expired_tokens_return_401(client):
+    invalid = client.get(
+        "/api/v1/auth/me",
+        headers={"Authorization": "Bearer not-a-valid-token"},
+    )
+    expired_token = create_access_token(
+        subject="1",
+        expires_delta=timedelta(seconds=-1),
+    )
+    expired = client.get(
+        "/api/v1/auth/me",
+        headers={"Authorization": f"Bearer {expired_token}"},
+    )
+
+    assert invalid.status_code == 401
+    assert expired.status_code == 401
+
+
+def test_login_database_unavailable_returns_503(client, monkeypatch):
+    def unavailable_db() -> None:
+        raise OperationalError("SELECT ...", {}, OSError("database unavailable"))
+
+    monkeypatch.setitem(app.dependency_overrides, get_db, unavailable_db)
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"username": "chairman", "password": "any-password"},
+    )
+
+    assert response.status_code == 503
+    assert response.headers["Retry-After"] == "2"
+    assert response.json()["detail"] == "Database temporarily unavailable. Please try again."
+
+
+def test_ready_does_not_query_database(client, monkeypatch):
+    def database_probe_is_not_allowed():
+        raise AssertionError("readiness must not access the database")
+
+    monkeypatch.setattr("app.db.session.SessionLocal", database_probe_is_not_allowed)
+
+    response = client.get("/ready")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ready"}
 
 
 def test_role_access(client, test_db):

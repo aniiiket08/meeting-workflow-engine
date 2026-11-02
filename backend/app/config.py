@@ -1,6 +1,8 @@
 from typing import Literal
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
 
 
 class Settings(BaseSettings):
@@ -61,11 +63,13 @@ class Settings(BaseSettings):
         description="SQLAlchemy database URL",
     )
 
-    # Vector Storage
-    CHROMADB_PATH: str = Field(
-        default="./data/chroma",
-        description="Path to ChromaDB persistent directory",
-    )
+    @property
+    def sqlalchemy_database_url(self) -> str:
+        """Use psycopg 3 for PostgreSQL URLs without an explicit SQLAlchemy driver."""
+        url = make_url(self.DATABASE_URL)
+        if url.drivername in {"postgres", "postgresql"}:
+            url = url.set(drivername="postgresql+psycopg")
+        return url.render_as_string(hide_password=False)
 
     # Logging
     LOG_LEVEL: str = Field(

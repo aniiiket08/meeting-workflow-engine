@@ -119,10 +119,40 @@ Full detail is in [`evaluation/evaluation_report.md`](evaluation/evaluation_repo
 
 ```bash
 cd backend
+alembic -c ../alembic.ini upgrade head
 uvicorn app.main:app --reload
 ```
 
 Runs at `http://localhost:8000`.
+
+The backend accepts SQLAlchemy database URLs through `DATABASE_URL`. Direct
+local runs default to SQLite. Database schema changes are applied with Alembic
+before the application starts.
+
+Docker Compose runs the backend and MCP server against its local PostgreSQL
+service. Set a strong URL-safe `POSTGRES_PASSWORD` in the ignored `.env` file
+before starting Compose:
+
+```bash
+docker compose up --build
+```
+
+Compose uses a separate `postgres_migration_data` volume and does not use or
+alter the SQLite database files. To run Uvicorn directly on the host against
+that same local database, start PostgreSQL with `docker compose up -d postgres`
+and set `DATABASE_URL` in the ignored `.env` file to
+`postgresql+psycopg://postgres:<your-url-safe-password>@localhost:5432/meeting_organizer`.
+Inside Compose, the backend uses the `postgres` service hostname instead.
+
+**MCP client (local stdio)**
+
+The project also exposes its tools using the standard MCP stdio transport. From
+the project root, configure your MCP client to launch
+`.venv\Scripts\python.exe -m mcp_server.stdio_server` with the project root as
+its working directory. On macOS/Linux, use `.venv/bin/python` instead. The MCP
+client inherits the local environment, including `DATABASE_URL` and any
+optional integration settings. Only connect trusted local MCP clients because
+the server exposes the registered meeting and room tools to that client.
 
 **Frontend**
 
@@ -133,6 +163,14 @@ npm run dev
 ```
 
 Runs at `http://localhost:5173`.
+
+**Frontend API configuration**
+
+Local Vite development proxies `/api` to `http://127.0.0.1:8000` by default.
+Set `VITE_API_URL` to a backend origin (without an `/api/v1` suffix) only when
+the frontend and backend are served from different origins; the frontend
+appends the API path. `/ready` checks application readiness without querying
+the database; `/health` performs a database probe for diagnostics.
 
 **Run the evaluation suite**
 
