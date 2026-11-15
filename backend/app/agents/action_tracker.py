@@ -26,6 +26,56 @@ class ApprovedActionSchema(BaseModel):
     timestamp: str | None = Field(default=None, pattern=r"^\d{2}:\d{2}:\d{2}$")
 
 
+def _resolve_user(
+    db: Session,
+    owner_email: str | None = None,
+    owner_name: str | None = None,
+) -> User | None:
+    """Resolve a university member account from candidate email or name."""
+    if owner_email:
+        clean_email = owner_email.strip().lower()
+        user = db.query(User).filter(func.lower(User.email) == clean_email).first()
+        if user:
+            return user
+
+    if not owner_name:
+        return None
+
+    clean_name = owner_name.strip().lower()
+    if not clean_name:
+        return None
+
+    # 1. Exact match on full name or username
+    user = (
+        db.query(User)
+        .filter(
+            (func.lower(User.name) == clean_name)
+            | (func.lower(User.username) == clean_name)
+        )
+        .first()
+    )
+    if user:
+        return user
+
+    # 2. Token / first-name / role matching against active users
+    all_users = db.query(User).all()
+    name_tokens = {
+        t
+        for t in clean_name.replace("(", " ").replace(")", " ").replace(".", " ").replace(",", " ").split()
+        if len(t) > 1
+    }
+    for u in all_users:
+        u_name = u.name.lower()
+        u_uname = u.username.lower()
+        u_tokens = set(u_name.split()) | {u_uname}
+        if name_tokens & u_tokens:
+            return u
+        if hasattr(u, "role") and u.role and u.role.value.lower() in name_tokens:
+            return u
+
+    return None
+
+
 def prepare_draft_action_items(
     db: Session,
     meeting_id: int,
@@ -70,19 +120,7 @@ def prepare_draft_action_items(
         if signature in existing_keys:
             continue
 
-        owner = None
-        if item.get("owner_email"):
-            owner = (
-                db.query(User)
-                .filter(func.lower(User.email) == item["owner_email"].lower())
-                .first()
-            )
-        if owner is None and item.get("owner_name"):
-            owner = (
-                db.query(User)
-                .filter(func.lower(User.name) == item["owner_name"].strip().lower())
-                .first()
-            )
+        owner = _resolve_user(db, item.get("owner_email"), item.get("owner_name"))
 
         due_date_value = item.get("due_date")
         due_date = (
@@ -162,22 +200,30 @@ def run_action_tracker_agent(
 
     existing_items = db.query(ActionItem).filter(ActionItem.meeting_id == meeting_id).all()
     if existing_items:
+        # Reconcile existing draft items with approved validated items (resolve owners / update dates)
+        changed = False
+        valid_by_quote = {item["source_quote"]: item for item in valid_actions}
+        for existing_item in existing_items:
+            candidate = valid_by_quote.get(existing_item.source_quote)
+            if candidate and existing_item.owner_id is None:
+                owner = _resolve_user(db, candidate.get("owner_email"), candidate.get("owner_name"))
+                if owner:
+                    existing_item.owner_id = owner.id
+                    existing_item.owner_name = owner.name
+                    existing_item.owner_email = owner.email
+                    existing_item.needs_confirmation = False
+                    changed = True
+        if changed:
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
         return existing_items
 
     created_items = []
 
     for item in valid_actions:
-        owner = (
-            db.query(User).filter(func.lower(User.email) == item["owner_email"].lower()).first()
-            if item["owner_email"]
-            else None
-        )
-        if owner is None and item.get("owner_name"):
-            owner = (
-                db.query(User)
-                .filter(func.lower(User.name) == item["owner_name"].strip().lower())
-                .first()
-            )
+        owner = _resolve_user(db, item.get("owner_email"), item.get("owner_name"))
         due_date_val = (
             datetime.combine(date.fromisoformat(item["due_date"]), datetime.min.time(), tzinfo=timezone.utc)
             if item["due_date"]

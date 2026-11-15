@@ -120,13 +120,96 @@ def test_memory_chat_agent_with_new_meeting_context(memory_test_db, monkeypatch)
 
     from app.memory.memory_chat import MemoryChatResponse
 
+    received_prompt = {}
+
     def mock_gen_structured(*args, **kwargs):
+        received_prompt.update(kwargs)
         return MemoryChatResponse(
             answer="The university received a $50,000 solar panel grant.",
-            citations=["Solar Panel Grant"],
+            key_decisions=["Accept the $50,000 rooftop solar grant."],
+            dates=["October 25, 2026"],
+            owners=[],
+            action_items=[],
+            unavailable=[],
+            citations=[meeting.id],
         )
 
     monkeypatch.setattr(llm_service, "generate_structured", mock_gen_structured)
     response = memory_chat("What grant was approved for solar panels?", db)
     assert "solar" in response["answer"].lower()
-    assert response["citations"] == ["Solar Panel Grant"]
+    assert response["citations"] == [meeting.id]
+    assert response["key_decisions"] == ["Accept the $50,000 rooftop solar grant."]
+    assert "exact question first" in received_prompt["prompt"]
+    assert "100-150 words" in received_prompt["prompt"]
+    assert "never guess" in received_prompt["prompt"]
+
+
+def test_memory_endpoint_returns_generated_answer_and_only_its_citations(
+    memory_test_db, monkeypatch
+):
+    from app.api.routes import memory as memory_route
+
+    db = memory_test_db
+    chairman = db.query(User).filter_by(username="chairman").one()
+    meeting = Meeting(
+        title="GPU Cluster Budget",
+        duration_minutes=60,
+        organizer_id=chairman.id,
+        status=MeetingStatus.MINUTES_APPROVED,
+        start_time=datetime(2026, 10, 25, 14, 0, tzinfo=timezone.utc),
+    )
+    db.add(meeting)
+    db.commit()
+    db.add(
+        Minutes(
+            meeting_id=meeting.id,
+            version=1,
+            summary="Approved a $15,000 GPU cluster budget.",
+            status=MinutesStatus.APPROVED,
+            content_hash="hash-gpu",
+        )
+    )
+    db.commit()
+
+    monkeypatch.setattr(
+        memory_route,
+        "memory_chat",
+        lambda query, session, retrieved_docs: {
+            "answer": "The committee approved $15,000 for the GPU cluster.",
+            "key_decisions": ["Approved $15,000 for the GPU cluster."],
+            "dates": ["October 25, 2026"],
+            "owners": [],
+            "action_items": [],
+            "unavailable": [],
+            "citations": [meeting.id],
+        },
+    )
+
+    response = memory_route.query_meeting_memory(
+        memory_route.MemoryQueryRequest(query="What was approved for the GPU cluster?"),
+        db=db,
+        current_user=chairman,
+    )
+
+    assert response["answer"] == "The committee approved $15,000 for the GPU cluster."
+    assert response["key_decisions"] == ["Approved $15,000 for the GPU cluster."]
+    assert response["dates"] == ["October 25, 2026"]
+    assert [citation["meeting_id"] for citation in response["citations"]] == [meeting.id]
+    assert "$15,000" in response["citations"][0]["snippet"]
+
+
+def test_memory_endpoint_states_when_no_records_match(memory_test_db, monkeypatch):
+    from app.api.routes import memory as memory_route
+
+    chairman = memory_test_db.query(User).filter_by(username="chairman").one()
+    monkeypatch.setattr(memory_route.memory_store, "search", lambda **kwargs: [])
+
+    response = memory_route.query_meeting_memory(
+        memory_route.MemoryQueryRequest(query="Who owns the telescope purchase?"),
+        db=memory_test_db,
+        current_user=chairman,
+    )
+
+    assert response["answer"] == "No matching meeting minutes or decisions were found for this query."
+    assert response["unavailable"] == ["No matching meeting records were found."]
+    assert response["citations"] == []

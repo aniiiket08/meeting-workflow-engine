@@ -1,4 +1,6 @@
 from datetime import date, datetime, timezone
+from urllib.parse import urlsplit
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from app.db.models.meeting import MeetingStatus, RSVPStatus
 
@@ -34,6 +36,30 @@ class MeetingConfirmRequest(BaseModel):
     selected_end_time: str
     room_id: int | None = None
     is_online: bool = False
+    zoom_meeting_id: str | None = Field(default=None, min_length=1, max_length=100)
+    zoom_join_url: str | None = Field(default=None, min_length=1, max_length=500)
+
+    @field_validator("zoom_meeting_id", "zoom_join_url", mode="before")
+    @classmethod
+    def strip_zoom_values(cls, value: str | None) -> str | None:
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("zoom_join_url")
+    @classmethod
+    def validate_zoom_join_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        parsed = urlsplit(value)
+        hostname = (parsed.hostname or "").lower()
+        if (
+            parsed.scheme != "https"
+            or not (hostname == "zoom.us" or hostname.endswith(".zoom.us"))
+            or parsed.username is not None
+            or parsed.password is not None
+            or not parsed.path.strip("/")
+        ):
+            raise ValueError("Enter a valid HTTPS Zoom join link.")
+        return value
 
 
 class MeetingResponse(BaseModel):

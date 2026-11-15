@@ -19,7 +19,7 @@ from app.api.routes.schedule import router as schedule_router
 from app.api.routes.traces import router as traces_router
 from app.api.routes.users import router as users_router
 from app.config import settings
-from app.core.errors import AppError, app_exception_handler
+from app.core.errors import AppError, LLMError, app_exception_handler
 from app.core.logging import setup_logging
 from app.middleware.timing import TimingMiddleware
 from app.services.job_worker import start_worker, stop_worker
@@ -65,6 +65,39 @@ app.add_middleware(
 
 # Global Exception Handlers
 app.add_exception_handler(AppError, app_exception_handler)
+
+
+@app.exception_handler(Exception)
+async def global_unhandled_exception_handler(
+    request: Request,
+    exc: Exception,
+) -> JSONResponse:
+    """Catch-all for any unhandled exception — prevents raw 500 HTML bodies."""
+    from app.core.errors import LLMError
+    logger.error(
+        "Unhandled exception [%s] on %s %s: %s",
+        type(exc).__name__,
+        request.method,
+        request.url.path,
+        exc,
+        exc_info=True,
+    )
+    # Give LLM errors a user-friendly message
+    if isinstance(exc, LLMError):
+        return JSONResponse(
+            status_code=502,
+            content={"error": {"code": "llm_error", "message": str(exc), "action": "retry_llm_request"}},
+        )
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": {
+                "code": "internal_server_error",
+                "message": "An unexpected server error occurred. Please try again.",
+                "action": "retry_request",
+            }
+        },
+    )
 
 
 @app.exception_handler(OperationalError)
@@ -126,6 +159,7 @@ def health_check() -> dict[str, str]:
 
 
 @app.get("/ready")
+@app.get(f"{settings.API_V1_STR}/ready")
 def readiness_check() -> dict[str, str]:
     # Keep readiness checks independent of the database; /health reports DB status.
     return {"status": "ready"}

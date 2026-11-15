@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Mic2, Printer, UploadCloud, X } from "lucide-react";
+import { Calendar, Download, Mic2, Printer, Send, UploadCloud, X } from "lucide-react";
 import { api, apiUrl, fetchWithRetry, useProgress, waitForJob } from "../api/client";
 import { getAuthToken } from "../lib/theme";
 import { AppShell } from "../components/AppShell";
@@ -27,6 +27,12 @@ interface MinutesData {
   status: "draft" | "approved" | "rejected";
   content_hash: string;
   transcript: string;
+}
+
+interface QueuedMinutesDraft {
+  job_id: number;
+  status: "pending" | "running";
+  progress_text: string;
 }
 
 interface TranscriptLine {
@@ -112,7 +118,11 @@ export const MinutesReview: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
 
-  const canProcessTranscript = !!user && ["chairman", "principal", "hod", "teacher"].includes(user.role);
+  const canProcessByRole =
+    !!user && ["chairman", "principal", "hod", "teacher"].includes(user.role);
+  const [canSubmitForMeeting, setCanSubmitForMeeting] = useState(false);
+  const canProcessTranscript =
+    canProcessByRole || (user?.role === "student" && canSubmitForMeeting);
   const canApproveMinutes = !!user && ["chairman", "principal", "hod"].includes(user.role);
 
   const [minutes, setMinutes] = useState<MinutesData | null>(null);
@@ -137,23 +147,34 @@ export const MinutesReview: React.FC = () => {
 
   useEffect(() => {
     fetchMinutes();
-  }, [id]);
+  }, [id, user?.id, user?.role]);
 
   const fetchMinutes = async () => {
     setLoading(true);
     setError(null);
+    setCanSubmitForMeeting(false);
     try {
-      const data = await api.get<MinutesData>(`/meetings/${id}/minutes`);
-      setMinutes(data);
+      const data = await api.get<MinutesData | QueuedMinutesDraft>(`/meetings/${id}/minutes`);
+      setCanSubmitForMeeting(true);
+      if ("job_id" in data) {
+        setJobProgress(data.progress_text);
+        const draftedMinutes = await waitForJob<MinutesData>(data.job_id, setJobProgress);
+        setMinutes(draftedMinutes);
+      } else {
+        setMinutes(data);
+      }
     } catch (err: any) {
       setMinutes(null);
       const message = err.message || "Could not load meeting minutes.";
+      const transcriptMissing = message.includes("Transcript with ID");
+      setCanSubmitForMeeting(transcriptMissing);
       setError(
-        message.includes("Transcript with ID")
+        transcriptMissing
           ? "No transcript recorded for this session yet. Provide a transcript below to extract minutes."
           : message
       );
     } finally {
+      setJobProgress("");
       setLoading(false);
     }
   };
@@ -238,6 +259,54 @@ export const MinutesReview: React.FC = () => {
     }
   };
 
+  const [distributing, setDistributing] = useState(false);
+
+  const handleDistribute = async () => {
+    if (!id) return;
+    setDistributing(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      const queued = await api.post<{ job_id: number; status: string }>(
+        `/meetings/${id}/minutes/distribute`,
+        {}
+      );
+      const res = await waitForJob<any>(queued.job_id, setJobProgress);
+      const count = res?.recipients?.length ?? 0;
+      setSuccessMsg(
+        res?.status === "already_distributed"
+          ? `Minutes already distributed to ${count} attendee(s).`
+          : `Distribution dispatched to ${count} attendee(s) with calendar invite (.ics) and PDF.`
+      );
+    } catch (err: any) {
+      setError(err.message || "Failed to trigger distribution.");
+    } finally {
+      setDistributing(false);
+    }
+  };
+
+  const handleDownloadFile = async (format: "pdf" | "ics") => {
+    if (!id) return;
+    try {
+      const token = getAuthToken();
+      const res = await fetch(apiUrl(`/meetings/${id}/minutes/${format}`), {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error(`Could not download ${format.toUpperCase()}`);
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = format === "pdf" ? `minutes_meeting_${id}.pdf` : `meeting_${id}.ics`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setError(err.message || `Failed to download ${format.toUpperCase()}`);
+    }
+  };
+
   const openDrawerAt = useCallback((ts: string | null) => {
     setHighlightTimestamp(ts);
     setDrawerOpen(true);
@@ -303,7 +372,7 @@ export const MinutesReview: React.FC = () => {
 
         {loading ? (
           <div className="py-16 text-center font-serif italic text-ink-soft text-15">
-            Loading transcript and signed minutes…
+            {jobProgress || "Loading transcript and signed minutes…"}
           </div>
         ) : !minutes ? (
           /* ── No Transcript: Audio Upload + Paste ───────────── */
@@ -424,8 +493,9 @@ export const MinutesReview: React.FC = () => {
 
             </div>
           ) : (
-            <div className="editorial-card py-16 text-center font-serif italic text-ink-soft text-15">
-              Minutes are not yet available for this meeting.
+            <div className="editorial-card py-16 text-center font-serif text-ink-soft text-15">
+              Transcript entry is available to teachers, meeting managers, and students who are attendees
+              of this meeting. You need meeting access to paste or upload a transcript.
             </div>
           )
         ) : (
@@ -574,7 +644,7 @@ export const MinutesReview: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-3">
                   {canApproveMinutes && minutes.status !== "approved" && (
                     <button
                       type="button"
@@ -584,6 +654,41 @@ export const MinutesReview: React.FC = () => {
                     >
                       {approving ? (progressMsg || "Sending distribution…") : "Approve & Sign Minutes"}
                     </button>
+                  )}
+
+                  {minutes.status === "approved" && canApproveMinutes && (
+                    <button
+                      type="button"
+                      onClick={handleDistribute}
+                      disabled={distributing}
+                      className="btn-secondary text-12 py-2.5 px-4 flex items-center gap-1.5"
+                    >
+                      <Send size={13} />
+                      <span>{distributing ? "Distributing…" : "Re-send Distribution"}</span>
+                    </button>
+                  )}
+
+                  {minutes.status === "approved" && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadFile("pdf")}
+                        className="btn-secondary text-12 py-2.5 px-3 flex items-center gap-1.5"
+                        title="Download official PDF copy"
+                      >
+                        <Download size={13} />
+                        <span>PDF</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadFile("ics")}
+                        className="btn-secondary text-12 py-2.5 px-3 flex items-center gap-1.5"
+                        title="Download calendar invite (.ics)"
+                      >
+                        <Calendar size={13} />
+                        <span>.ICS</span>
+                      </button>
+                    </>
                   )}
 
                   <Link

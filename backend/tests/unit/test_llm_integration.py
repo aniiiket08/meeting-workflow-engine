@@ -83,6 +83,48 @@ def test_llm_handles_rate_limit_429_retry(monkeypatch):
     assert attempts == 2
 
 
+def test_llm_retries_gemini_503_until_service_recovers(monkeypatch):
+    import httpx
+
+    service = LLMService(use_cache=False)
+    service.gemini_key = "test-key"
+    attempts = 0
+    delays = []
+
+    def mock_post(*args, **kwargs):
+        nonlocal attempts
+        attempts += 1
+        req = httpx.Request("POST", "https://generativelanguage.googleapis.com")
+        if attempts < 5:
+            response = httpx.Response(503, request=req)
+            raise httpx.HTTPStatusError("Service unavailable", request=req, response=response)
+        return httpx.Response(
+            200,
+            request=req,
+            json={
+                "candidates": [
+                    {
+                        "content": {
+                            "parts": [
+                                {"text": "{\"task\": \"Recovered\", \"priority\": \"high\"}"}
+                            ]
+                        }
+                    }
+                ],
+                "usageMetadata": {"totalTokenCount": 25},
+            },
+        )
+
+    monkeypatch.setattr(httpx, "post", mock_post)
+    monkeypatch.setattr("app.services.llm.time.sleep", delays.append)
+
+    output = service.generate_structured("prompt", SimpleTaskSchema)
+
+    assert output.task == "Recovered"
+    assert attempts == 5
+    assert delays == [1, 2, 4, 8]
+
+
 def test_llm_handles_malformed_response_with_repair_retry(monkeypatch):
     service = LLMService()
     call_count = 0

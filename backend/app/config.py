@@ -57,6 +57,12 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str | None = None
     SMTP_STARTTLS: bool = True
 
+    # Zoom Server-to-Server OAuth. These values are loaded from the local .env
+    # file as well as environment variables and are never logged.
+    ZOOM_ACCOUNT_ID: str | None = None
+    ZOOM_CLIENT_ID: str | None = None
+    ZOOM_CLIENT_SECRET: str | None = None
+
     # Database
     DATABASE_URL: str = Field(
         default="sqlite:///./sql_app.db",

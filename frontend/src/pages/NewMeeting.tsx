@@ -48,6 +48,7 @@ const EQUIPMENT_LABELS: Record<string, string> = {
 };
 
 const FILTER_EQUIPMENT = ["projector", "mic", "whiteboard", "video_conf"];
+const ZOOM_SCHEDULER_URL = "https://zoom.us/meeting/schedule";
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -86,6 +87,8 @@ export const NewMeeting: React.FC = () => {
   const [selectedRoomId, setSelectedRoomId]   = useState<number | null>(null);
   const [isOnlineMeeting, setIsOnlineMeeting] = useState<boolean>(false);
   const [roomError, setRoomError]             = useState<string | null>(null);
+  const [zoomMeetingId, setZoomMeetingId]     = useState("");
+  const [zoomJoinUrl, setZoomJoinUrl]         = useState("");
   // Equipment filter local to the room picker (can differ from equipmentNeeded)
   const [roomEquipFilter, setRoomEquipFilter] = useState<string[]>([]);
 
@@ -218,13 +221,24 @@ export const NewMeeting: React.FC = () => {
     setRoomError(null);
 
     try {
-      const job = await api.post<{ job_id: number }>(`/meetings/${createdMeetingId}/confirm`, {
+      const confirmation = await api.post<{ job_id?: number }>(`/meetings/${createdMeetingId}/confirm`, {
         selected_start_time: stagedSlot.start_time,
         selected_end_time: stagedSlot.end_time,
         room_id: isOnlineMeeting ? null : (selectedRoomId ?? null),
         is_online: isOnlineMeeting,
+        ...(isOnlineMeeting
+          ? {
+              zoom_meeting_id: zoomMeetingId.trim(),
+              zoom_join_url: zoomJoinUrl.trim(),
+            }
+          : {}),
       });
-      await waitForJob(job.job_id, setJobProgress);
+      if (!isOnlineMeeting) {
+        if (confirmation.job_id === undefined) {
+          throw new Error("Meeting confirmation did not return a booking job.");
+        }
+        await waitForJob(confirmation.job_id, setJobProgress);
+      }
       navigate("/meetings");
     } catch (err: any) {
       // Surface room-specific errors in the room section
@@ -794,11 +808,11 @@ export const NewMeeting: React.FC = () => {
                             </span>
                           </div>
                           <p className="mt-1 text-12 font-sans text-soft">
-                            MCP-powered Zoom meeting. Automatically creates a secure video room with join link.
+                            Open Zoom's scheduler to create the meeting directly in your Zoom account.
                           </p>
                           {isOnlineMeeting && (
                             <p className="mt-1.5 text-11 font-sans" style={{ color: "#2B72BA" }}>
-                              ✓ Zoom link will be created and shared with all participants
+                              Use the selected time and duration in Zoom, then share its join link with attendees.
                             </p>
                           )}
                         </div>
@@ -807,7 +821,7 @@ export const NewMeeting: React.FC = () => {
                           className="label shrink-0 mt-0.5"
                           style={{ color: "#2B72BA", border: "1px solid #2B72BA", padding: "1px 6px", borderRadius: 4 }}
                         >
-                          Zoom MCP
+                          Zoom
                         </span>
                       </li>
                     </ul>
@@ -839,20 +853,75 @@ export const NewMeeting: React.FC = () => {
                           {" "}&middot; {selectedRoomEntry.capacity} seats
                         </p>
                       ) : null}
-                      <button
-                        onClick={handleConfirm}
-                        disabled={bookingLoading || (!selectedRoomId && !isOnlineMeeting)}
-                        className="btn-primary disabled:opacity-50"
-                        style={{ minWidth: 240 }}
-                      >
-                        {bookingLoading
-                          ? "Scheduling…"
-                          : isOnlineMeeting
-                          ? "Confirm & Create Zoom Meeting"
-                          : selectedRoomId
-                          ? `Confirm and book ${selectedRoomEntry?.name ?? "room"}`
-                          : "Select a room or Zoom to continue"}
-                      </button>
+                      {isOnlineMeeting ? (
+                        <div className="space-y-4">
+                          <a
+                            href={ZOOM_SCHEDULER_URL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn-primary inline-block text-center"
+                            style={{ minWidth: 240 }}
+                          >
+                            1. Schedule in Zoom
+                          </a>
+                          <p className="text-12 text-soft">
+                            After creating the meeting, return here and enter its meeting ID and join link.
+                          </p>
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <label className="field-float">
+                              <span className="field-label">Zoom meeting ID</span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                autoComplete="off"
+                                value={zoomMeetingId}
+                                onChange={(event) => setZoomMeetingId(event.target.value)}
+                                className="input-underline"
+                                placeholder="e.g. 123 4567 8901"
+                                required
+                              />
+                            </label>
+                            <label className="field-float">
+                              <span className="field-label">Zoom join link</span>
+                              <input
+                                type="url"
+                                autoComplete="url"
+                                value={zoomJoinUrl}
+                                onChange={(event) => setZoomJoinUrl(event.target.value)}
+                                className="input-underline"
+                                placeholder="https://zoom.us/j/..."
+                                required
+                              />
+                            </label>
+                          </div>
+                          <button
+                            onClick={handleConfirm}
+                            disabled={bookingLoading || !zoomMeetingId.trim() || !zoomJoinUrl.trim()}
+                            className="btn-primary disabled:opacity-50"
+                            style={{ minWidth: 240 }}
+                          >
+                            {bookingLoading ? "Saving meeting…" : "2. Save Zoom details & finish"}
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={handleConfirm}
+                          disabled={bookingLoading || !selectedRoomId}
+                          className="btn-primary disabled:opacity-50"
+                          style={{ minWidth: 240 }}
+                        >
+                          {bookingLoading
+                            ? "Scheduling…"
+                            : selectedRoomId
+                            ? `Confirm and book ${selectedRoomEntry?.name ?? "room"}`
+                            : "Select a room to continue"}
+                        </button>
+                      )}
+                      {isOnlineMeeting && (
+                        <p className="mt-2 text-11 text-soft">
+                          Saving the details records this time and join link in the app and makes it visible on the meeting page.
+                        </p>
+                      )}
                     </div>
                   </>
                 )}

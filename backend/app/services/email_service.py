@@ -13,6 +13,7 @@ from app.config import settings
 from app.core.errors import ToolError, ValidationFailed
 
 logger = logging.getLogger("meeting_organizer")
+EMAIL_NOT_CONFIGURED_MESSAGE = "Email delivery is not configured. Set SMTP_HOST and SMTP_FROM_EMAIL."
 
 class ReminderLevel(str, enum.Enum):
     GENTLE = "gentle"
@@ -35,6 +36,10 @@ class SentReminder(Base):
 
 
 class EmailService:
+    @property
+    def is_configured(self) -> bool:
+        return bool(settings.SMTP_HOST and settings.SMTP_FROM_EMAIL)
+
     def send_email(
         self,
         to_email: str,
@@ -44,10 +49,10 @@ class EmailService:
         attachments: list[tuple[str, bytes, str]] | None = None,
     ) -> bool:
         """Send a real SMTP message; never claim delivery when SMTP is unconfigured."""
-        if not settings.SMTP_HOST or not settings.SMTP_FROM_EMAIL:
+        if not self.is_configured:
             logger.error("SMTP delivery requested but no SMTP host/from address is configured")
             raise ToolError(
-                "Email delivery is not configured. Set SMTP_HOST and SMTP_FROM_EMAIL.",
+                EMAIL_NOT_CONFIGURED_MESSAGE,
                 tool_name="smtp.send_email",
             )
 

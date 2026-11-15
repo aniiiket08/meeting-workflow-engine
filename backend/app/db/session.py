@@ -5,9 +5,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import settings
 
-# For SQLite, ensure check_same_thread is False for multi-threaded access
+# For SQLite, ensure check_same_thread is False for multi-threaded access and set a busy timeout
 database_url = settings.sqlalchemy_database_url
-connect_args = {"check_same_thread": False} if database_url.startswith("sqlite") else {}
+connect_args = {"check_same_thread": False, "timeout": 30.0} if database_url.startswith("sqlite") else {}
 
 engine = create_engine(
     database_url,

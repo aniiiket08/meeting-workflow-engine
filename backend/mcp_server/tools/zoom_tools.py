@@ -1,19 +1,21 @@
 import hashlib
-import os
 import time
-from datetime import datetime, timezone
 from typing import Any
-import httpx
-from dateutil.parser import parse as parse_date
 
+import httpx
+from app.config import settings
 from app.core.errors import ToolError, ValidationFailed
 from app.core.logging import setup_logging
+from dateutil.parser import parse as parse_date
 
 logger = setup_logging()
 
 # In-memory mock storage for created Zoom meetings (for tests / when real Zoom API keys are absent)
 _MOCK_ZOOM_MEETINGS: dict[str, dict[str, Any]] = {}
 _IDEMPOTENCY_STORE: dict[str, str] = {}  # idempotency_key -> meeting_id
+_ZOOM_MEETING_CREATE_SCOPES = frozenset(
+    {"meeting:write:meeting", "meeting:write:meeting:admin"}
+)
 
 
 class ZoomClient:
@@ -24,12 +26,15 @@ class ZoomClient:
         account_id: str | None = None,
         client_id: str | None = None,
         client_secret: str | None = None,
+        allow_mock: bool = False,
     ):
-        self.account_id = account_id or os.getenv("ZOOM_ACCOUNT_ID")
-        self.client_id = client_id or os.getenv("ZOOM_CLIENT_ID")
-        self.client_secret = client_secret or os.getenv("ZOOM_CLIENT_SECRET")
+        self.account_id = account_id if account_id is not None else settings.ZOOM_ACCOUNT_ID
+        self.client_id = client_id if client_id is not None else settings.ZOOM_CLIENT_ID
+        self.client_secret = client_secret if client_secret is not None else settings.ZOOM_CLIENT_SECRET
+        self.allow_mock = allow_mock
         self._access_token: str | None = None
         self._token_expires_at: float = 0.0
+        self._granted_scopes: frozenset[str] | None = None
 
     @property
     def has_live_credentials(self) -> bool:
@@ -67,8 +72,46 @@ class ZoomClient:
                 data = response.json()
                 self._access_token = data["access_token"]
                 self._token_expires_at = time.time() + data.get("expires_in", 3600)
+                response_scopes = data.get("scope")
+                if isinstance(response_scopes, str):
+                    self._granted_scopes = frozenset(response_scopes.replace(",", " ").split())
+                elif isinstance(response_scopes, list) and all(isinstance(scope, str) for scope in response_scopes):
+                    self._granted_scopes = frozenset(response_scopes)
+                else:
+                    self._granted_scopes = None
                 return self._access_token
             except httpx.HTTPStatusError as exc:
+                if exc.response.status_code < 500:
+                    try:
+                        error_data = exc.response.json()
+                    except ValueError:
+                        error_data = {}
+
+                    zoom_code = error_data.get("error") or error_data.get("code")
+                    zoom_message = (
+                        error_data.get("reason")
+                        or error_data.get("error_description")
+                        or error_data.get("message")
+                    )
+                    if isinstance(zoom_message, str):
+                        for credential in (self.account_id, self.client_id, self.client_secret):
+                            if credential:
+                                zoom_message = zoom_message.replace(credential, "[redacted]")
+
+                    message = f"Zoom authentication failed with HTTP {exc.response.status_code}"
+                    if isinstance(zoom_code, (int, str)):
+                        message += f" ({str(zoom_code)[:100]})"
+                    if isinstance(zoom_message, str) and zoom_message:
+                        message += f": {zoom_message[:500]}"
+
+                    raise ToolError(
+                        message,
+                        tool_name="zoom.get_access_token",
+                        details={
+                            "http_status": exc.response.status_code,
+                            "zoom_code": zoom_code if isinstance(zoom_code, (int, str)) else None,
+                        },
+                    ) from exc
                 if attempt == 2:
                     raise ToolError(
                         f"Zoom authentication failed with HTTP {exc.response.status_code}.",
@@ -112,17 +155,24 @@ class ZoomClient:
                     res.pop("start_url", None)
                 return res
 
-        # Fallback to deterministic clean mock if live credentials not configured
+        # Mocks must be explicitly enabled by tests; never return fake Zoom URLs.
         if not self.has_live_credentials:
-            meeting_id = str(int(hashlib.md5(f"{topic}_{start_time_iso}_{idempotency_key}".encode()).hexdigest()[:10], 16))
+            if not self.allow_mock:
+                raise ToolError(
+                    "Zoom is not configured. Set ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, and "
+                    "ZOOM_CLIENT_SECRET in the local .env file.",
+                    tool_name="zoom.create_meeting",
+                )
+            mock_digest = hashlib.md5(
+                f"{topic}_{start_time_iso}_{idempotency_key}".encode()
+            ).hexdigest()[:10]
+            meeting_id = f"mock-{int(mock_digest, 16)}"
             meeting_record = {
                 "id": meeting_id,
                 "topic": topic,
                 "start_time": start_dt.isoformat(),
                 "duration": duration_minutes,
                 "timezone": timezone_str,
-                "join_url": f"https://zoom.us/j/{meeting_id}",
-                "start_url": f"https://zoom.us/s/{meeting_id}?zak=mock_host_token",
                 "status": "waiting",
                 "is_mock": True,
             }
@@ -130,13 +180,23 @@ class ZoomClient:
             if idempotency_key:
                 _IDEMPOTENCY_STORE[idempotency_key] = meeting_id
 
-            out = dict(meeting_record)
-            if not include_host_url:
-                out.pop("start_url", None)
-            return out
+            return dict(meeting_record)
 
         # Live Zoom API call
         token = self._get_access_token()
+        if (
+            self._granted_scopes is not None
+            and not _ZOOM_MEETING_CREATE_SCOPES.intersection(self._granted_scopes)
+        ):
+            required_scopes = sorted(_ZOOM_MEETING_CREATE_SCOPES)
+            raise ToolError(
+                "The Zoom access token lacks a meeting-creation scope. Add "
+                f"{' or '.join(required_scopes)} to the existing Zoom Server-to-Server OAuth app, "
+                "then restart the backend to fetch a token with the updated scope. "
+                "The existing account ID, client ID, and client secret do not need to change.",
+                tool_name="zoom.create_meeting",
+                details={"required_scopes": required_scopes},
+            )
         headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
         payload = {
             "topic": topic,
@@ -177,6 +237,25 @@ class ZoomClient:
                     out.pop("start_url", None)
                 return out
             except httpx.HTTPStatusError as exc:
+                if exc.response.status_code < 500:
+                    try:
+                        error_data = exc.response.json()
+                    except ValueError:
+                        error_data = {}
+
+                    zoom_code = error_data.get("code")
+                    zoom_message = error_data.get("message")
+                    message = f"Zoom API meeting creation failed with status {exc.response.status_code}"
+                    if zoom_code is not None:
+                        message += f" (Zoom code {zoom_code})"
+                    if isinstance(zoom_message, str) and zoom_message:
+                        message += f": {zoom_message[:500]}"
+
+                    raise ToolError(
+                        message,
+                        tool_name="zoom.create_meeting",
+                        details={"http_status": exc.response.status_code, "zoom_code": zoom_code},
+                    ) from exc
                 if attempt == 2:
                     raise ToolError(
                         f"Zoom API meeting creation failed with status {exc.response.status_code}.",

@@ -26,6 +26,7 @@ from app.core.errors import (
     ToolError,
     ValidationFailed,
 )
+from app.config import settings
 from app.db.base import Base
 from app.db.models.action import ActionItem, ActionPriority, ActionStatus
 from app.db.models.agenda import Agenda, AgendaStatus
@@ -476,6 +477,8 @@ def test_distribution_failure_is_typed_after_approval(audit_db, monkeypatch):
         )
     )
     db.commit()
+    monkeypatch.setattr(settings, "SMTP_HOST", "smtp.test.invalid")
+    monkeypatch.setattr(settings, "SMTP_FROM_EMAIL", "sender@test.invalid")
     monkeypatch.setattr(email_service, "generate_pdf_minutes", lambda summary, points: b"pdf")
     monkeypatch.setattr(email_service, "generate_ics_calendar", lambda **kwargs: "ics")
     monkeypatch.setattr(
@@ -591,3 +594,26 @@ def test_trace_records_prompt_tools_and_actual_tokens(audit_db):
     assert trace.tools_json[0]["name"] == "unit.test_tool"
     assert trace.tokens == 17
     assert trace.output_data == {"answer": "from source"}
+
+
+def test_trace_persistence_failure_does_not_fail_agent_execution(monkeypatch, caplog):
+    class BrokenSession:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def add(self, _record):
+            raise RuntimeError("trace database unavailable")
+
+    monkeypatch.setattr(tracer_module, "SessionLocal", BrokenSession)
+
+    @trace_agent("trace_failure_test")
+    def successful_operation():
+        return {"result": "minutes generated"}
+
+    assert successful_operation() == {"result": "minutes generated"}
+    assert "Failed to write trace for agent trace_failure_test" in caplog.text
+    assert "RuntimeError" in caplog.text
+    assert "trace database unavailable" not in caplog.text

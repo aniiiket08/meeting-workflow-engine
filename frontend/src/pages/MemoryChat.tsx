@@ -14,6 +14,11 @@ interface Citation {
 interface MemoryResponse {
   question: string;
   answer: string;
+  key_decisions: string[];
+  dates: string[];
+  owners: string[];
+  action_items: string[];
+  unavailable: string[];
   citations: Citation[];
 }
 
@@ -154,9 +159,32 @@ export const MemoryChat: React.FC = () => {
 
               {/* Answer */}
               <div className="pl-10">
-                <div className="font-serif text-15 text-ink leading-relaxed">
+                <h4 className="label text-ink-faint text-11 mb-2">Answer</h4>
+                <p className="font-serif text-15 text-ink leading-relaxed">
                   {item.answer}
-                </div>
+                </p>
+
+                {[
+                  { heading: "Key decisions", values: item.key_decisions },
+                  { heading: "Relevant dates", values: item.dates },
+                  { heading: "Owners", values: item.owners },
+                  { heading: "Action items", values: item.action_items },
+                  { heading: "Not specified in the records", values: item.unavailable },
+                ].map(({ heading, values }) => {
+                  if (!values?.length) return null;
+                  return (
+                    <section key={heading} className="mt-4">
+                      <h4 className="label text-ink-faint text-11 mb-2">
+                        {heading}
+                      </h4>
+                      <ul className="list-disc pl-5 space-y-1 font-sans text-13 text-ink-soft leading-relaxed">
+                        {values.map((entry, entryIdx) => (
+                          <li key={entryIdx}>{entry}</li>
+                        ))}
+                      </ul>
+                    </section>
+                  );
+                })}
 
                 {/* Citations & Evidence */}
                 {item.citations && item.citations.length > 0 && (

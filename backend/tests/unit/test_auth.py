@@ -1,18 +1,17 @@
 from datetime import timedelta
 
-from fastapi.testclient import TestClient
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-
 from app.api.deps import get_db
 from app.config import settings
 from app.core.security import create_access_token, get_password_hash
 from app.db.base import Base
 from app.db.models.user import User, UserRole
 from app.main import app
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 # In-memory SQLite DB for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -180,13 +179,14 @@ def test_login_database_unavailable_returns_503(client, monkeypatch):
     assert response.json()["detail"] == "Database temporarily unavailable. Please try again."
 
 
-def test_ready_does_not_query_database(client, monkeypatch):
+@pytest.mark.parametrize("path", ["/ready", "/api/v1/ready"])
+def test_ready_does_not_query_database(client, monkeypatch, path):
     def database_probe_is_not_allowed():
         raise AssertionError("readiness must not access the database")
 
     monkeypatch.setattr("app.db.session.SessionLocal", database_probe_is_not_allowed)
 
-    response = client.get("/ready")
+    response = client.get(path)
 
     assert response.status_code == 200
     assert response.json() == {"status": "ready"}

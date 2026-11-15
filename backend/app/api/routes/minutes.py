@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Any
 import base64
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, UploadFile, Response
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
@@ -16,6 +16,7 @@ from app.db.models.user import User, UserRole
 from app.services.job_worker import enqueue_job
 from app.db.models.job import Job
 from app.services.stt import stt_service
+from app.services.email_service import email_service
 
 router = APIRouter(prefix="/meetings", tags=["Minutes"])
 
@@ -287,3 +288,55 @@ def distribute_minutes(
         meeting_id=meeting_id,
     )
     return {"job_id": job.id, "status": job.status, "progress_text": job.progress_text}
+
+
+@router.get("/{meeting_id}/minutes/pdf")
+def download_minutes_pdf(
+    meeting_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Download approved meeting minutes as a PDF document."""
+    meeting = db.query(Meeting).filter(Meeting.id == meeting_id).first()
+    if meeting is None:
+        raise NotFound(entity="Meeting", identifier=meeting_id)
+    require_meeting_access(db, meeting, current_user)
+    minutes = (
+        db.query(Minutes)
+        .filter(Minutes.meeting_id == meeting_id)
+        .order_by(Minutes.version.desc())
+        .first()
+    )
+    if not minutes:
+        raise NotFound(entity="Minutes", identifier=meeting_id)
+
+    pdf_bytes = email_service.generate_pdf_minutes(minutes.summary, minutes.key_discussion_points or [])
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="minutes_meeting_{meeting_id}.pdf"'},
+    )
+
+
+@router.get("/{meeting_id}/minutes/ics")
+def download_meeting_ics(
+    meeting_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Download meeting calendar invite as an iCalendar (.ics) file."""
+    meeting = db.query(Meeting).filter(Meeting.id == meeting_id).first()
+    if meeting is None:
+        raise NotFound(entity="Meeting", identifier=meeting_id)
+    require_meeting_access(db, meeting, current_user)
+
+    ics_content = email_service.generate_ics_calendar(
+        title=meeting.title,
+        start_iso=meeting.start_time.isoformat() if meeting.start_time else "",
+        end_iso=meeting.end_time.isoformat() if meeting.end_time else "",
+    )
+    return Response(
+        content=ics_content,
+        media_type="text/calendar",
+        headers={"Content-Disposition": f'attachment; filename="meeting_{meeting_id}.ics"'},
+    )

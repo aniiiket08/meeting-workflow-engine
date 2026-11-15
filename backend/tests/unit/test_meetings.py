@@ -167,7 +167,7 @@ def test_confirm_slot_and_room_booking(client):
     assert "job_id" in confirm_data
 
 
-def test_confirm_slot_zoom_online_booking(client):
+def test_confirm_slot_zoom_online_booking(client, test_db):
     login_res = client.post("/api/v1/auth/login", json={"username": "chairman", "password": "password123"})
     token = login_res.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -188,13 +188,56 @@ def test_confirm_slot_zoom_online_booking(client):
             "selected_start_time": "2026-11-03T10:00:00+00:00",
             "selected_end_time": "2026-11-03T10:30:00+00:00",
             "is_online": True,
+            "zoom_meeting_id": "12345678901",
+            "zoom_join_url": "https://us02web.zoom.us/j/12345678901?pwd=sample",
         },
         headers=headers,
     )
     assert confirm_res.status_code == 200
     confirm_data = confirm_res.json()
-    assert isinstance(confirm_data["job_id"], int)
-    assert confirm_data["status"] == "pending"
+    assert confirm_data["status"] == "scheduled"
+    assert confirm_data["meeting"]["zoom_meeting_id"] == "12345678901"
+    assert confirm_data["meeting"]["zoom_join_url"] == "https://us02web.zoom.us/j/12345678901?pwd=sample"
+    meeting = test_db.query(Meeting).filter_by(id=meeting_id).one()
+    assert meeting.start_time.replace(tzinfo=timezone.utc) == datetime(2026, 11, 3, 10, 0, tzinfo=timezone.utc)
+    assert meeting.end_time.replace(tzinfo=timezone.utc) == datetime(2026, 11, 3, 10, 30, tzinfo=timezone.utc)
+
+
+def test_confirm_zoom_online_requires_valid_zoom_link(client):
+    login_res = client.post("/api/v1/auth/login", json={"username": "chairman", "password": "password123"})
+    headers = {"Authorization": f"******"}
+    headers = {"Authorization": "Bearer " + login_res.json()["access_token"]}
+    create_res = client.post(
+        "/api/v1/meetings",
+        json={"title": "Invalid Zoom Link Test", "duration_minutes": 30},
+        headers=headers,
+    )
+    meeting_id = create_res.json()["meeting"]["id"]
+
+    missing = client.post(
+        f"/api/v1/meetings/{meeting_id}/confirm",
+        json={
+            "selected_start_time": "2026-11-03T10:00:00+00:00",
+            "selected_end_time": "2026-11-03T10:30:00+00:00",
+            "is_online": True,
+            "zoom_meeting_id": "12345678901",
+        },
+        headers=headers,
+    )
+    assert missing.status_code == 422
+
+    invalid_url = client.post(
+        f"/api/v1/meetings/{meeting_id}/confirm",
+        json={
+            "selected_start_time": "2026-11-03T10:00:00+00:00",
+            "selected_end_time": "2026-11-03T10:30:00+00:00",
+            "is_online": True,
+            "zoom_meeting_id": "12345678901",
+            "zoom_join_url": "https://example.com/j/12345678901",
+        },
+        headers=headers,
+    )
+    assert invalid_url.status_code == 422
 
 
 def test_authenticated_user_directory(client):

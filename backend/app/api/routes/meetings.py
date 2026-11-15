@@ -1,4 +1,5 @@
 from typing import Any
+from dateutil.parser import parse as parse_date
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -157,6 +158,34 @@ def confirm_meeting_slot(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only the meeting organizer or a university manager can confirm its time.",
         )
+
+    start_time = parse_date(payload.selected_start_time)
+    end_time = parse_date(payload.selected_end_time)
+    if end_time <= start_time:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Meeting end time must be after its start time.",
+        )
+
+    if payload.is_online:
+        if not payload.zoom_meeting_id or not payload.zoom_join_url:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="Enter the Zoom meeting ID and join link after scheduling it in Zoom.",
+            )
+        meeting.start_time = start_time
+        meeting.end_time = end_time
+        meeting.room_id = None
+        meeting.zoom_meeting_id = payload.zoom_meeting_id
+        meeting.zoom_join_url = payload.zoom_join_url
+        meeting.status = MeetingStatus.ROOM_BOOKED
+        db.commit()
+        db.refresh(meeting)
+        return {
+            "meeting": MeetingResponse.model_validate(meeting),
+            "status": "scheduled",
+            "message": "Zoom meeting details saved.",
+        }
 
     headcount = len(meeting.attendees) if meeting.attendees else 1
     job = enqueue_job(

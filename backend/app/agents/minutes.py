@@ -1,12 +1,10 @@
-"""Minutes Agent — two-pass extraction with high recall.
+"""Minutes Agent — fast, grounded extraction with high recall.
 
-Pass 1 (candidate sweep):
-  Rule-based scan every ~10-line chunk for commitment patterns, then LLM sweeps
-  for anything the rules missed.  All candidates carry a verbatim quote + timestamp.
+Pass 1 combines a rule scan with one full-transcript LLM request for minutes and
+commitments missed by the rules. All candidates carry a verbatim quote + timestamp.
 
-Pass 2 (classify):
-  LLM decides task / not-task per candidate.  When unsure → keep and flag
-  needs_confirmation.  Declined ideas and past events are dropped.
+Pass 2 uses one LLM call to classify candidates. When unsure, keep and flag
+needs_confirmation. Declined ideas and past events are dropped.
 
 Owner / due-date rules:
   - owner_name only when the speaker explicitly names a person ("I'll", "Arjun will").
@@ -24,6 +22,7 @@ import hashlib
 import json
 import logging
 import re
+import time
 from typing import Any, Literal
 
 from pydantic import BaseModel, EmailStr, Field
@@ -103,10 +102,6 @@ class CandidateCommitmentSchema(BaseModel):
     rule_matched: str | None = Field(default=None, description="Which regex matched, if any")
 
 
-class CandidateListSchema(BaseModel):
-    candidates: list[CandidateCommitmentSchema] = Field(default_factory=list)
-
-
 class ActionItemSchema(BaseModel):
     title: str
     owner_email: EmailStr | None = None
@@ -147,15 +142,12 @@ class MinutesSchema(BaseModel):
     summary: str
     key_discussion_points: list[str]
     decisions: list[DecisionSchema]
+    candidate_commitments: list[CandidateCommitmentSchema] = Field(default_factory=list)
     # action_items is now populated by our two-pass pipeline, not from here
     action_items: list[ActionItemSchema] = Field(default_factory=list)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
-
-def _chunk_lines(lines: list[str], chunk_size: int = 10) -> list[list[str]]:
-    return [lines[i : i + chunk_size] for i in range(0, len(lines), chunk_size)]
-
 
 def _rule_scan(transcript: str) -> list[CandidateCommitmentSchema]:
     """Pass 1a — iterate every line, apply pattern list, collect candidates."""
@@ -184,56 +176,6 @@ def _rule_scan(transcript: str) -> list[CandidateCommitmentSchema]:
                     )
                 break  # one match per line is enough
     return candidates
-
-
-def _llm_sweep(
-    chunks: list[list[str]],
-    already_found: list[CandidateCommitmentSchema],
-) -> list[CandidateCommitmentSchema]:
-    """Pass 1b — LLM sweeps each chunk for commitments the rules might have missed."""
-    already_quotes = {" ".join(c.verbatim_quote.lower().split()) for c in already_found}
-    new_candidates: list[CandidateCommitmentSchema] = []
-
-    for chunk in chunks:
-        chunk_text = "\n".join(chunk)
-        if not chunk_text.strip():
-            continue
-        prompt = (
-            f"Find only explicit, uncompleted task commitments or assignments that were NOT "
-            f"already caught by keyword scanning. Require clear ownership/commitment language "
-            f"(for example, 'I will', 'X will', 'you handle', or 'needs to be done by').\n"
-            f"Do not extract questions, proposals, opinions, priorities, discussion topics, "
-            f"status reports, past work, declined ideas, or decisions with no implementation task.\n"
-            f"Already-found quotes (do not repeat):\n"
-            + (
-                "\n".join(f"- {c.verbatim_quote}" for c in already_found[:20])
-                if already_found
-                else "(none yet)"
-            )
-            + f"\n\nTranscript chunk:\n{chunk_text}\n\n"
-            f"Return ONLY new candidates the rule scanner would miss while still meeting the "
-            f"explicit-commitment requirement. If none, return an empty candidates list."
-        )
-        try:
-            result = llm_service.generate_structured(
-                prompt=prompt,
-                response_schema=CandidateListSchema,
-                system_prompt=(
-                    "You are a precise action-item extractor. "
-                    "Do not infer tasks from discussion, intentions without a commitment, "
-                    "status updates, questions, or opinions. "
-                    "Use exact verbatim quotes from the chunk."
-                ),
-            )
-            for c in result.candidates:
-                key = " ".join(c.verbatim_quote.lower().split())
-                if key not in already_quotes:
-                    already_quotes.add(key)
-                    new_candidates.append(c)
-        except Exception:
-            logger.warning("LLM sweep chunk failed; continuing with rule candidates only.")
-
-    return new_candidates
 
 
 def _deduplicate_candidates(
@@ -490,9 +432,17 @@ def run_minutes_agent(
     if not transcript_text.strip():
         raise ValidationFailed("Transcript text cannot be empty.")
 
+    generation_started = time.perf_counter()
     redacted_text = redact_pii(transcript_text)
+    rule_candidates = _rule_scan(redacted_text)
+    lines = redacted_text.splitlines()
+    already_found = (
+        "\n".join(f"- {candidate.verbatim_quote}" for candidate in rule_candidates)
+        if rule_candidates
+        else "(none)"
+    )
 
-    # ── Extract summary, discussion points, and decisions (unchanged) ─────────
+    # One full-transcript call produces minutes and candidates missed by the rules.
     structure_prompt = f"""Extract executive meeting minutes from this transcript:
 ---
 {redacted_text}
@@ -502,10 +452,17 @@ Output JSON with:
 - summary
 - key_discussion_points
 - decisions (each with text, verbatim source_quote from transcript line, and timestamp if present)
+- candidate_commitments (additional explicit, uncompleted task commitments missed by the
+  rule scan; each must include an exact verbatim quote and timestamp if present)
 - action_items (leave this as an empty list — actions are extracted separately)
 
 Every decision MUST include a verbatim source_quote from one transcript line.
 Include the exact timestamp only when one is present on that source line; otherwise set timestamp to null.
+Do not repeat any of these rule-scanned commitments in candidate_commitments:
+{already_found}
+For candidate_commitments, include only additional explicit commitments or assignments for concrete,
+uncompleted work. Exclude questions, proposals, opinions, discussion topics, status reports, past work,
+declined ideas, and decisions without implementation work. Quote the full source line exactly.
 Do not infer timestamps, owners, due dates, decisions, or actions.
 Use null for unknown values."""
 
@@ -514,6 +471,7 @@ Use null for unknown values."""
         response_schema=MinutesSchema,
         system_prompt=(
             "You are a professional meeting scribe producing accurate, grounded minutes. "
+            "Find additional explicit action commitments without repeating the supplied rule-scanned quotes. "
             "Action item priority must be low, medium, or high; use medium when the transcript "
             "does not establish a priority."
         ),
@@ -531,17 +489,14 @@ Use null for unknown values."""
         {"valid_decisions": len(valid_decisions)},
     )
 
-    # ── Pass 1: candidate sweep ───────────────────────────────────────────────
-    rule_candidates = _rule_scan(redacted_text)
-    lines = redacted_text.splitlines()
-    chunks = _chunk_lines(lines, chunk_size=10)
-    llm_candidates = _llm_sweep(chunks, rule_candidates)
+    # ── Pass 1: combine rule candidates with the same-call LLM sweep ─────────
+    llm_candidates = result.candidate_commitments
     all_candidates_raw = rule_candidates + llm_candidates
     all_candidates = _deduplicate_candidates(all_candidates_raw)
 
     record_tool_call(
         "minutes_agent.pass1_sweep",
-        {"transcript_lines": len(lines), "chunks": len(chunks)},
+        {"transcript_lines": len(lines)},
         {
             "rule_candidates": len(rule_candidates),
             "llm_candidates": len(llm_candidates),
@@ -620,6 +575,13 @@ Use null for unknown values."""
         "llm_candidates": len(llm_candidates),
     }
     logger.info("Minutes recall report: %s", recall_report)
+    logger.info(
+        "Minutes generation complete duration_ms=%.1f transcript_lines=%d candidates=%d tasks=%d",
+        (time.perf_counter() - generation_started) * 1000,
+        len(lines),
+        len(all_candidates),
+        len(valid_actions),
+    )
 
     return {
         "summary": result.summary,

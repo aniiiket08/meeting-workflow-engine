@@ -55,6 +55,7 @@ class LLMService:
                     cached = get_cached(_db, _cache_key)
                     if cached is not None:
                         record_tool_call("llm.gemini", {"model": self.model, "cache": "hit"}, {})
+                        logger.info("Gemini response cache hit model=%s", self.model)
                         return cached
                 finally:
                     _db.close()
@@ -83,7 +84,9 @@ class LLMService:
                 "x-goog-api-key": self.gemini_key,
             }
             start_time = time.time()
-            for attempt in range(3):
+            max_status_attempts = 5
+            max_transport_attempts = 3
+            for attempt in range(max_status_attempts):
                 try:
                     response = httpx.post(
                         endpoint,
@@ -96,11 +99,14 @@ class LLMService:
                 except httpx.TimeoutException as exc:
                     elapsed = time.time() - start_time
                     logger.error("Gemini API call timed out after %.2fs on attempt %d", elapsed, attempt + 1)
-                    if attempt == 2:
+                    if attempt == max_transport_attempts - 1:
                         raise LLMError(f"Gemini API timed out after {elapsed:.2f}s", model=self.model) from exc
                     time.sleep(2**attempt)
                 except httpx.HTTPStatusError as exc:
-                    if exc.response.status_code not in {429, 500, 502, 503, 504} or attempt == 2:
+                    if (
+                        exc.response.status_code not in {429, 500, 502, 503, 504}
+                        or attempt == max_status_attempts - 1
+                    ):
                         raise
                     retry_after = exc.response.headers.get("retry-after")
                     try:
@@ -109,7 +115,7 @@ class LLMService:
                         delay = 2**attempt
                     time.sleep(delay)
                 except httpx.TransportError:
-                    if attempt == 2:
+                    if attempt == max_transport_attempts - 1:
                         raise
                     time.sleep(2**attempt)
 
@@ -130,6 +136,13 @@ class LLMService:
             prompt_tokens = usage.get("promptTokenCount")
             completion_tokens = usage.get("candidatesTokenCount")
             record_token_usage(usage_tokens, reasoning_tokens)
+            logger.info(
+                "Gemini request complete model=%s duration_ms=%.1f prompt_tokens=%s completion_tokens=%s",
+                self.model,
+                (time.time() - start_time) * 1000,
+                prompt_tokens,
+                completion_tokens,
+            )
             record_tool_call(
                 "llm.gemini",
                 {"model": self.model},

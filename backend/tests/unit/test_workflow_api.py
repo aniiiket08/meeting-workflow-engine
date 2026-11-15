@@ -228,6 +228,9 @@ def test_audio_transcript_upload_api_persists_transcription(workflow_client, mon
 
 def test_minutes_approval_creates_follow_up_tasks_and_activity(workflow_client, monkeypatch):
     client, db, meeting_id = workflow_client
+    from app.config import settings
+    monkeypatch.setattr(settings, "SMTP_HOST", "smtp.test.invalid")
+    monkeypatch.setattr(settings, "SMTP_FROM_EMAIL", "sender@test.invalid")
     delivery_keys = []
     monkeypatch.setattr(
         email_service,

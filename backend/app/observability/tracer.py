@@ -8,7 +8,6 @@ from typing import Any, Callable
 from sqlalchemy import inspect as sqlalchemy_inspect
 from sqlalchemy.exc import NoInspectionAvailable
 from sqlalchemy.orm import Session
-from app.core.errors import ToolError
 from app.db.models.trace import AgentRun
 from app.db.session import SessionLocal
 from app.core.logging import setup_logging
@@ -98,7 +97,6 @@ def trace_agent(agent_name: str, *, sensitive: bool = False):
             context_token = _active_trace.set(trace_context)
             result: Any = None
             failure: Exception | None = None
-            trace_failure: Exception | None = None
             meeting_id = kwargs.get("meeting_id")
 
             # Try to extract meeting_id from first arg if dict/state
@@ -152,18 +150,16 @@ def trace_agent(agent_name: str, *, sensitive: bool = False):
                         db.add(run_record)
                         db.commit()
                 except Exception as exc:
-                    logger.exception("Failed to write trace for agent %s", agent_name)
-                    trace_failure = exc
+                    logger.error(
+                        "Failed to write trace for agent %s; execution result is preserved (error_type=%s)",
+                        agent_name,
+                        type(exc).__name__,
+                    )
                 finally:
                     _active_trace.reset(context_token)
 
             if failure is not None:
                 raise failure
-            if trace_failure is not None:
-                raise ToolError(
-                    "Agent execution could not be recorded.",
-                    tool_name="observability.agent_runs",
-                ) from trace_failure
             return result
 
         return wrapper

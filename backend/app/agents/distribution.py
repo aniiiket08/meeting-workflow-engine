@@ -7,7 +7,7 @@ from app.core.logging import setup_logging
 from app.db.models.minutes import Minutes, MinutesStatus
 from app.db.models.meeting import Meeting, Attendee
 from app.db.models.audit import AuditLog
-from app.services.email_service import email_service
+from app.services.email_service import EMAIL_NOT_CONFIGURED_MESSAGE, email_service
 from app.observability.tracer import record_tool_call, trace_agent
 
 logger = setup_logging()
@@ -29,6 +29,26 @@ def run_distribution_agent(db: Session, meeting_id: int) -> Dict[str, Any]:
     recipients = [att.user.email for att in attendees if att.user]
     if not recipients:
         raise ValidationFailed("Approved minutes cannot be distributed without attendees.")
+
+    if not email_service.is_configured:
+        known_not_sent = (
+            db.query(AuditLog)
+            .filter(AuditLog.action == "DISTRIBUTE_MINUTES_ATTEMPT")
+            .all()
+        )
+        changed_legacy_attempts = False
+        for attempt in known_not_sent:
+            details = attempt.details or {}
+            if (
+                details.get("meeting_id") == meeting_id
+                and details.get("status") == "uncertain"
+                and details.get("error") == EMAIL_NOT_CONFIGURED_MESSAGE
+            ):
+                attempt.details = {**details, "status": "not_sent"}
+                changed_legacy_attempts = True
+        if changed_legacy_attempts:
+            db.commit()
+        raise ToolError(EMAIL_NOT_CONFIGURED_MESSAGE, tool_name="email_service.send_email")
 
     pdf_bytes = None
     pdf_status = "attached"
@@ -88,14 +108,42 @@ def run_distribution_agent(db: Session, meeting_id: int) -> Dict[str, Any]:
             None,
         )
         if attempt:
-            attempt_status = (attempt.details or {}).get("status")
+            attempt_details = attempt.details or {}
+            attempt_status = attempt_details.get("status")
             if attempt_status == "sent":
                 distributed_emails.append(recipient)
                 continue
-            raise ToolError(
-                "A previous SMTP attempt has an uncertain outcome; reconcile delivery before retrying.",
-                tool_name="email_service.send_email",
+            if (
+                attempt_status == "uncertain"
+                and attempt_details.get("error") == EMAIL_NOT_CONFIGURED_MESSAGE
+            ):
+                attempt.details = {**attempt_details, "status": "not_sent"}
+                db.commit()
+                attempt_status = "not_sent"
+            if attempt_status == "not_sent":
+                attempt.details = {**(attempt.details or {}), "status": "sending"}
+                db.commit()
+            else:
+                raise ToolError(
+                    "A previous SMTP attempt has an uncertain outcome; reconcile delivery before retrying.",
+                    tool_name="email_service.send_email",
+                )
+        else:
+            attempt = AuditLog(
+                actor="system",
+                action="DISTRIBUTE_MINUTES_ATTEMPT",
+                entity="Meeting",
+                details={
+                    "meeting_id": meeting_id,
+                    "recipient": recipient,
+                    "content_hash": minutes.content_hash,
+                    "idempotency_key": idempotency_key,
+                    "status": "sending",
+                    "pdf_status": pdf_status,
+                },
             )
+            db.add(attempt)
+            db.commit()
         delivered = db.query(AuditLog).filter(
             AuditLog.action == "DISTRIBUTE_MINUTES_RECIPIENT"
         ).all()
@@ -103,21 +151,6 @@ def run_distribution_agent(db: Session, meeting_id: int) -> Dict[str, Any]:
             distributed_emails.append(recipient)
             continue
 
-        attempt = AuditLog(
-            actor="system",
-            action="DISTRIBUTE_MINUTES_ATTEMPT",
-            entity="Meeting",
-            details={
-                "meeting_id": meeting_id,
-                "recipient": recipient,
-                "content_hash": minutes.content_hash,
-                "idempotency_key": idempotency_key,
-                "status": "sending",
-                "pdf_status": pdf_status,
-            },
-        )
-        db.add(attempt)
-        db.commit()
         try:
             sent = email_service.send_email(
                 to_email=recipient,

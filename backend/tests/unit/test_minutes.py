@@ -405,6 +405,43 @@ def _make_structure_response(monkeypatch):
 
 
 class TestFullPipeline:
+    def test_long_transcript_uses_fixed_number_of_llm_calls(self, isolated_trace_db, monkeypatch):
+        calls = []
+
+        def _mock(prompt, response_schema, system_prompt=""):
+            calls.append(response_schema)
+            if response_schema == MinutesSchema:
+                return MinutesSchema(
+                    summary="A long meeting.",
+                    key_discussion_points=[],
+                    decisions=[],
+                    candidate_commitments=[],
+                )
+            if response_schema == ClassifiedBatchSchema:
+                import re as _re
+                count = len(_re.findall(r'"index"\s*:', prompt))
+                return ClassifiedBatchSchema(
+                    results=[
+                        ClassifiedCandidateSchema(
+                            is_task=True,
+                            title="Complete migration",
+                            owner_name="Alex",
+                            due_date_relative="by Friday",
+                        )
+                        for _ in range(count)
+                    ]
+                )
+            raise AssertionError(f"Unexpected LLM schema: {response_schema.__name__}")
+
+        monkeypatch.setattr(llm_service, "generate_structured", _mock)
+        filler = [f"[00:{i // 60:02d}:{i % 60:02d}] General discussion continues." for i in range(35)]
+        filler.insert(17, "[00:00:17] Alex will complete the migration by Friday.")
+
+        result = run_minutes_agent("\n".join(filler))
+
+        assert calls == [MinutesSchema, ClassifiedBatchSchema]
+        assert len(result["action_items"]) == 1
+
     def test_mcp_and_eval_dashboard_captured(self, isolated_trace_db, monkeypatch):
         """Explicit MCP commitment is kept; an unassigned priority is not a task."""
         _make_structure_response(monkeypatch)

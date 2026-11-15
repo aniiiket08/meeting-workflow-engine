@@ -1,3 +1,4 @@
+import logging
 from typing import Any, TypedDict
 
 from langchain_core.runnables import RunnableConfig
@@ -7,8 +8,11 @@ from sqlalchemy.orm import Session
 from app.agents.action_tracker import run_action_tracker_agent
 from app.agents.distribution import run_distribution_agent
 from app.agents.reminder import run_reminder_agent
+from app.core.errors import ToolError
 from app.db.models.action import ActionItem
 from app.db.models.meeting import Meeting, MeetingStatus
+
+logger = logging.getLogger("meeting_organizer")
 
 
 class FollowUpState(TypedDict, total=False):
@@ -51,8 +55,18 @@ def distribute_approved_minutes(
     state: FollowUpState, config: RunnableConfig
 ) -> dict[str, Any]:
     db = _request_db(config)
-    result = run_distribution_agent(db=db, meeting_id=state["meeting_id"])
-    if result.get("status") == "distributed":
+    try:
+        result = run_distribution_agent(db=db, meeting_id=state["meeting_id"])
+    except ToolError as exc:
+        if "Email delivery is not configured" in str(exc):
+            logger.info(
+                "SMTP unconfigured; minutes distribution skipped for meeting_id=%s without blocking workflow",
+                state["meeting_id"],
+            )
+            result = {"status": "skipped", "reason": "smtp_not_configured"}
+        else:
+            raise
+    if result.get("status") in {"distributed", "skipped"}:
         meeting = db.query(Meeting).filter(Meeting.id == state["meeting_id"]).first()
         if meeting:
             meeting.status = MeetingStatus.DISTRIBUTED
@@ -63,8 +77,17 @@ def distribute_approved_minutes(
 def run_meeting_reminders(
     state: FollowUpState, config: RunnableConfig
 ) -> dict[str, int]:
-    result = run_reminder_agent(db=_request_db(config), meeting_id=state["meeting_id"])
-    return {"reminders_sent": result["reminders_sent"]}
+    try:
+        result = run_reminder_agent(db=_request_db(config), meeting_id=state["meeting_id"])
+        return {"reminders_sent": result["reminders_sent"]}
+    except ToolError as exc:
+        if "Email delivery is not configured" in str(exc):
+            logger.info(
+                "SMTP unconfigured; reminders skipped for meeting_id=%s without blocking workflow",
+                state["meeting_id"],
+            )
+            return {"reminders_sent": 0}
+        raise
 
 
 def build_follow_up_graph():
