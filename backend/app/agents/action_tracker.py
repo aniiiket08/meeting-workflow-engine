@@ -120,6 +120,19 @@ def prepare_draft_action_items(
         if signature in existing_keys:
             continue
 
+        owner = None
+        if item.get("owner_email"):
+            owner = (
+                db.query(User)
+                .filter(func.lower(User.email) == item["owner_email"].lower())
+                .first()
+            )
+        if owner is None and item.get("owner_name"):
+            owner = (
+                db.query(User)
+                .filter(func.lower(User.name) == item["owner_name"].strip().lower())
+                .first()
+            )
         owner = _resolve_user(db, item.get("owner_email"), item.get("owner_name"))
 
         due_date_value = item.get("due_date")
@@ -223,6 +236,17 @@ def run_action_tracker_agent(
     created_items = []
 
     for item in valid_actions:
+        owner = (
+            db.query(User).filter(func.lower(User.email) == item["owner_email"].lower()).first()
+            if item["owner_email"]
+            else None
+        )
+        if owner is None and item.get("owner_name"):
+            owner = (
+                db.query(User)
+                .filter(func.lower(User.name) == item["owner_name"].strip().lower())
+                .first()
+            )
         owner = _resolve_user(db, item.get("owner_email"), item.get("owner_name"))
         due_date_val = (
             datetime.combine(date.fromisoformat(item["due_date"]), datetime.min.time(), tzinfo=timezone.utc)

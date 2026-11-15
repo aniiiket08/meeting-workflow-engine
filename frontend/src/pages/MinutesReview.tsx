@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { Mic2, Printer, UploadCloud, X } from "lucide-react";
 import { Calendar, Download, Mic2, Printer, Send, UploadCloud, X } from "lucide-react";
 import { api, apiUrl, fetchWithRetry, useProgress, waitForJob } from "../api/client";
 import { getAuthToken } from "../lib/theme";
@@ -95,9 +96,8 @@ const TranscriptDrawer: React.FC<DrawerProps> = ({ lines, highlightTimestamp, on
               <div
                 key={line.lineIndex}
                 ref={isHighlight ? highlightRef : undefined}
-                className={`py-1 px-1.5 rounded-sm ${
-                  isHighlight ? "transcript-line-highlight" : "hover:bg-tint/40"
-                }`}
+                className={`py-1 px-1.5 rounded-sm ${isHighlight ? "transcript-line-highlight" : "hover:bg-tint/40"
+                  }`}
               >
                 {line.timestamp && (
                   <span className="text-ink-faint mr-2 select-none font-semibold">
@@ -398,19 +398,17 @@ export const MinutesReview: React.FC = () => {
                   onDragLeave={() => setDragOver(false)}
                   onDrop={handleDrop}
                   onClick={() => audioInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-sm p-8 text-center cursor-pointer transition-colors ${
-                    dragOver
+                  className={`border-2 border-dashed rounded-sm p-8 text-center cursor-pointer transition-colors ${dragOver
                       ? "border-accent bg-accent/5"
                       : audioFile
-                      ? "border-ink bg-tint/30"
-                      : "border-rule hover:border-ink-soft"
-                  }`}
+                        ? "border-ink bg-tint/30"
+                        : "border-rule hover:border-ink-soft"
+                    }`}
                 >
                   <UploadCloud
                     size={28}
-                    className={`mx-auto mb-2 ${
-                      audioFile ? "text-ink" : "text-ink-faint"
-                    }`}
+                    className={`mx-auto mb-2 ${audioFile ? "text-ink" : "text-ink-faint"
+                      }`}
                   />
                   {audioFile ? (
                     <div className="space-y-1">
@@ -508,9 +506,8 @@ export const MinutesReview: React.FC = () => {
                   DOCUMENT VERSION: v{minutes.version}
                 </span>
                 <span
-                  className={`editorial-tag ${
-                    minutes.status === "approved" ? "editorial-tag-ok" : "editorial-tag-warn"
-                  }`}
+                  className={`editorial-tag ${minutes.status === "approved" ? "editorial-tag-ok" : "editorial-tag-warn"
+                    }`}
                 >
                   {minutes.status.toUpperCase()}
                 </span>
@@ -595,11 +592,10 @@ export const MinutesReview: React.FC = () => {
                           </div>
 
                           <span
-                            className={`editorial-tag ${
-                              item.priority === "high"
+                            className={`editorial-tag ${item.priority === "high"
                                 ? "editorial-tag-accent"
                                 : "editorial-tag-default"
-                            } text-10 px-2.5 py-0.5 shrink-0`}
+                              } text-10 px-2.5 py-0.5 shrink-0`}
                           >
                             {item.priority.toUpperCase()}
                           </span>
@@ -644,74 +640,75 @@ export const MinutesReview: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
-                  {canApproveMinutes && minutes.status !== "approved" && (
-                    <button
-                      type="button"
-                      onClick={handleApprove}
-                      disabled={approving}
-                      className="btn-primary py-2.5 px-5 text-13"
-                    >
-                      {approving ? (progressMsg || "Sending distribution…") : "Approve & Sign Minutes"}
-                    </button>
-                  )}
-
-                  {minutes.status === "approved" && canApproveMinutes && (
-                    <button
-                      type="button"
-                      onClick={handleDistribute}
-                      disabled={distributing}
-                      className="btn-secondary text-12 py-2.5 px-4 flex items-center gap-1.5"
-                    >
-                      <Send size={13} />
-                      <span>{distributing ? "Distributing…" : "Re-send Distribution"}</span>
-                    </button>
-                  )}
-
-                  {minutes.status === "approved" && (
-                    <>
+                <div className="flex items-center gap-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    {canApproveMinutes && minutes.status !== "approved" && (
                       <button
                         type="button"
-                        onClick={() => handleDownloadFile("pdf")}
-                        className="btn-secondary text-12 py-2.5 px-3 flex items-center gap-1.5"
-                        title="Download official PDF copy"
+                        onClick={handleApprove}
+                        disabled={approving}
+                        className="btn-primary py-2.5 px-5 text-13"
                       >
-                        <Download size={13} />
-                        <span>PDF</span>
+                        {approving ? (progressMsg || "Sending distribution…") : "Approve & Sign Minutes"}
                       </button>
+                    )}
+
+                    {minutes.status === "approved" && canApproveMinutes && (
                       <button
                         type="button"
-                        onClick={() => handleDownloadFile("ics")}
-                        className="btn-secondary text-12 py-2.5 px-3 flex items-center gap-1.5"
-                        title="Download calendar invite (.ics)"
+                        onClick={handleDistribute}
+                        disabled={distributing}
+                        className="btn-secondary text-12 py-2.5 px-4 flex items-center gap-1.5"
                       >
-                        <Calendar size={13} />
-                        <span>.ICS</span>
+                        <Send size={13} />
+                        <span>{distributing ? "Distributing…" : "Re-send Distribution"}</span>
                       </button>
-                    </>
-                  )}
+                    )}
 
-                  <Link
-                    to={`/actions?meeting=${id}`}
-                    className="btn-secondary text-12 py-2.5 px-4"
-                  >
-                    View in Action Tracker
-                  </Link>
+                    {minutes.status === "approved" && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadFile("pdf")}
+                          className="btn-secondary text-12 py-2.5 px-3 flex items-center gap-1.5"
+                          title="Download official PDF copy"
+                        >
+                          <Download size={13} />
+                          <span>PDF</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadFile("ics")}
+                          className="btn-secondary text-12 py-2.5 px-3 flex items-center gap-1.5"
+                          title="Download calendar invite (.ics)"
+                        >
+                          <Calendar size={13} />
+                          <span>.ICS</span>
+                        </button>
+                      </>
+                    )}
+
+                    <Link
+                      to={`/actions?meeting=${id}`}
+                      className="btn-secondary text-12 py-2.5 px-4"
+                    >
+                      View in Action Tracker
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
         )}
-      </div>
+          </div>
 
       {/* ── Slide-in Transcript Drawer ────────────────────────── */}
-      {drawerOpen && minutes && (
-        <TranscriptDrawer
-          lines={transcriptLines}
-          highlightTimestamp={highlightTimestamp}
-          onClose={() => setDrawerOpen(false)}
-        />
-      )}
+        {drawerOpen && minutes && (
+          <TranscriptDrawer
+            lines={transcriptLines}
+            highlightTimestamp={highlightTimestamp}
+            onClose={() => setDrawerOpen(false)}
+          />
+        )}
     </AppShell>
   );
 };
