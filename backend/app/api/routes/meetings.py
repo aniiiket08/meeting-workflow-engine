@@ -173,6 +173,7 @@ def confirm_meeting_slot(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Enter the Zoom meeting ID and join link after scheduling it in Zoom.",
             )
+        was_already_scheduled = meeting.status in (MeetingStatus.ROOM_BOOKED, MeetingStatus.SCHEDULED)
         meeting.start_time = start_time
         meeting.end_time = end_time
         meeting.room_id = None
@@ -181,6 +182,24 @@ def confirm_meeting_slot(
         meeting.status = MeetingStatus.ROOM_BOOKED
         db.commit()
         db.refresh(meeting)
+
+        from app.services.email_service import email_service
+        event_type = "rescheduled" if was_already_scheduled else "scheduled"
+        recipients = [
+            a.user.email if a.user else a.external_email
+            for a in meeting.attendees
+            if a.user or a.external_email
+        ] or ["yeezusftwww@gmail.com", "02fe23bci038@kletech.ac.in"]
+        email_service.notify_meeting_event(
+            event_type=event_type,
+            meeting_title=meeting.title,
+            start_time_iso=meeting.start_time.isoformat() if meeting.start_time else None,
+            end_time_iso=meeting.end_time.isoformat() if meeting.end_time else None,
+            location=f"Zoom: {meeting.zoom_join_url}",
+            recipients=recipients,
+            meeting_id=meeting.id,
+        )
+
         return {
             "meeting": MeetingResponse.model_validate(meeting),
             "status": "scheduled",
@@ -227,4 +246,21 @@ def discard_meeting(
     meeting.status = MeetingStatus.DISCARDED
     db.commit()
     db.refresh(meeting)
+
+    from app.services.email_service import email_service
+    recipients = [
+        a.user.email if a.user else a.external_email
+        for a in meeting.attendees
+        if a.user or a.external_email
+    ] or ["yeezusftwww@gmail.com", "02fe23bci038@kletech.ac.in"]
+    email_service.notify_meeting_event(
+        event_type="cancelled",
+        meeting_title=meeting.title,
+        start_time_iso=meeting.start_time.isoformat() if meeting.start_time else None,
+        end_time_iso=meeting.end_time.isoformat() if meeting.end_time else None,
+        location=meeting.zoom_join_url or (f"Room: {meeting.room.name}" if meeting.room else None),
+        recipients=recipients,
+        meeting_id=meeting.id,
+    )
+
     return meeting

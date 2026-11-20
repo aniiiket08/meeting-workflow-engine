@@ -1,0 +1,9 @@
+Discovered: {'name': 'read_file', 'kind': 'resource', 'input': {'path': 'str'}, 'output': {'content': 'str'}}
+Discovered: {'name': 'query_db', 'kind': 'tool', 'input': {'sql': 'str'}, 'output': {'rows': 'list'}}
+Discovered: {'name': 'call_api', 'kind': 'tool', 'input': {'endpoint': 'str'}, 'output': {'data': 'any'}}
+Read: {'content': 'Safe classroom resource'}
+Adversarial path: /private.txt {'error': 'outside safe directory /safe/', 'path': '/private.txt'}
+Adversarial path: /safe/../private.txt {'error': 'outside safe directory /safe/', 'path': '/safe/../private.txt'}
+Adversarial path: /safeevil/file {'error': 'outside safe directory /safe/', 'path': '/safeevil/file'}
+Adversarial path: README.md {'error': 'outside safe directory /safe/', 'path': 'README.md'}
+PASS: manifest discovery and structured path rejection

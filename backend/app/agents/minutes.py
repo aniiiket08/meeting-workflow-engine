@@ -257,8 +257,7 @@ def _classify_candidates(
         f"declined ideas, policy choices, and statements of a changed/approved state are NOT tasks.\n"
         f"- A question or suggestion does not become a task merely because it names future work.\n"
         f"- Do not treat 'let us decide' or 'let's review' as an assignment.\n"
-        f"- owner_name: ONLY if the speaker names a person ('I\\'ll', 'Arjun will', 'you handle'). "
-        f"Never infer from who was speaking. Otherwise leave null.\n"
+        f"- owner_name: If the speaker commits to a task ('I will', 'I\\'ll') and the line identifies the speaker ('Speaker: I will...'), set owner_name to that speaker. If another person or role is assigned ('Arjun will', 'you handle'), use that name or role. Otherwise leave null.\n"
         f"- owner_email: ONLY if explicitly stated in the transcript. Otherwise null.\n"
         f"- due_date_relative: ONLY if stated ('by Friday', 'next Monday'). Never default to today or meeting date. Otherwise null.\n"
         f"- needs_confirmation = true whenever owner_name is null OR due_date_relative is null.\n"
@@ -288,15 +287,24 @@ def _classify_candidates(
         cand = candidates[i] if i < len(candidates) else None
         if cand is None:
             continue
+        owner_val = cls.owner_name
+        if not owner_val and not cls.owner_email:
+            speaker_match = re.match(r"^([A-Za-z0-9_.\s'-]+?):\s*", cand.verbatim_quote)
+            if speaker_match:
+                speaker_cand = speaker_match.group(1).strip()
+                if not re.search(r"\b(?:all|everyone|nobody|none|meeting|note|action)\b", speaker_cand, re.I):
+                    if re.search(r"\b(?:i['’]?ll|i will|i am going to|i can)\b", cand.verbatim_quote, re.I):
+                        owner_val = speaker_cand
+
         needs_conf = cls.needs_confirmation or (
-            cls.owner_name is None and cls.owner_email is None
+            owner_val is None and cls.owner_email is None
         ) or (
             cls.due_date_relative is None
         )
         actions.append(
             ActionItemSchema(
                 title=cls.title or cand.verbatim_quote[:120],
-                owner_name=cls.owner_name,
+                owner_name=owner_val,
                 owner_email=cls.owner_email,
                 due_date_relative=cls.due_date_relative,
                 priority=cls.priority,

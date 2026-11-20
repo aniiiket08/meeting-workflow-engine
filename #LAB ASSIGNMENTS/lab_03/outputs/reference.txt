@@ -1,0 +1,17 @@
+
+--- Retrieval-Augmented Generation Reduces Hallucination in Domain QA ---
+Claim:      A recent benchmark study found that retrieval-augmented generation (RAG) reduced factual hallucination rates by 41% compared to a non-retrieval baseline on a domain-specific question-answering task
+Evidence:   The evaluation used 200 held-out questions from a medical knowledge base
+Limitation: The authors note the evaluation set was small and drawn from a single domain, so results may not generalize to other domains without further testing
+Takeaway:   Undergraduate takeaway: A recent benchmark study found that retrieval-augmented generation (RAG) reduced factual hallucination rates by 41% compared to a non-retrieval baseline on a domain-specific question-answering task -- but verify before generalizing.
+
+--- Campus Wi-Fi Upgrade Improves Peak-Hour Throughput ---
+Claim:      Following a campus-wide Wi-Fi access point upgrade, average peak-hour throughput in the library increased by 60%
+Evidence:   The measurement was taken over two weeks post-upgrade using the network monitoring dashboard
+Limitation: The report does not include measurements from other buildings on campus, so it is unclear whether the improvement is uniform across campus
+Takeaway:   Undergraduate takeaway: Following a campus-wide Wi-Fi access point upgrade, average peak-hour throughput in the library increased by 60% -- but verify before generalizing.
+
+=== Reusability check ===
+Same output structure across both inputs: True
+Limitation field populated in both outputs: True
+Conclusion: SKILL IS REUSABLE

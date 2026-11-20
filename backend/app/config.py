@@ -49,13 +49,19 @@ class Settings(BaseSettings):
         description="Password used by the seed script for initial users (must be set in .env)",
     )
 
-    # Outbound email. No delivery is attempted until SMTP is explicitly configured.
+    # Outbound email. No delivery is attempted until SMTP or Gmail OAuth is explicitly configured.
     SMTP_HOST: str | None = None
     SMTP_PORT: int = 587
     SMTP_USERNAME: str | None = None
     SMTP_PASSWORD: str | None = None
     SMTP_FROM_EMAIL: str | None = None
     SMTP_STARTTLS: bool = True
+
+    # Gmail OAuth 2.0
+    GMAIL_CLIENT_ID: str | None = None
+    GMAIL_CLIENT_SECRET: str | None = None
+    GMAIL_REFRESH_TOKEN: str | None = None
+    GMAIL_SENDER_EMAIL: str | None = None
 
     # Zoom Server-to-Server OAuth. These values are loaded from the local .env
     # file as well as environment variables and are never logged.

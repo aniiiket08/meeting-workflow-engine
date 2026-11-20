@@ -1,0 +1,33 @@
+=== Run 1: FAQ match ===
+{'rejected': False, 'response': "Connect to 'Campus-Secure' and log in with your student ID.", 'outcome': {'resolution': 'faq', 'answer': "Connect to 'Campus-Secure' and log in with your student ID."}}
+
+=== Run 2: Escalation (no FAQ match) ===
+{'rejected': False, 'response': 'Ticket T-001 created; support will follow up.', 'outcome': {'resolution': 'escalated', 'ticket_id': 'T-001'}}
+
+=== Run 3: Safety control rejects empty input ===
+{'rejected': True, 'reason': 'empty issue text'}
+
+=== Evaluation (tiny regression suite) ===
+  [PASS] How do I connect to wifi? -> faq (expected faq)
+  [PASS] My laptop charger is broken -> escalated (expected escalated)
+
+=== Prompt log ===
+{'stage': 'intake', 'input': 'How do I connect to wifi on campus?'}
+{'stage': 'triage', 'output': {'resolution': 'faq', 'answer': "Connect to 'Campus-Secure' and log in with your student ID."}}
+{'stage': 'intake', 'input': 'My laptop charger is broken'}
+{'stage': 'triage', 'output': {'resolution': 'escalated', 'ticket_id': 'T-001'}}
+{'stage': 'intake', 'input': '   '}
+
+=== Audit log ===
+{'stage': 'complete', 'user': 'alice', 'issue': 'How do I connect to wifi on campus?', 'outcome': {'resolution': 'faq', 'answer': "Connect to 'Campus-Secure' and log in with your student ID."}}
+{'stage': 'complete', 'user': 'bob', 'issue': 'My laptop charger is broken', 'outcome': {'resolution': 'escalated', 'ticket_id': 'T-001'}}
+{'stage': 'intake', 'result': 'rejected: empty issue'}
+
+=== Long-term memory / history ===
+{'user': 'alice', 'issue': 'How do I connect to wifi on campus?', 'outcome': {'resolution': 'faq', 'answer': "Connect to 'Campus-Secure' and log in with your student ID."}, 'date': '2026-11-15T08:04:42'}
+{'user': 'bob', 'issue': 'My laptop charger is broken', 'outcome': {'resolution': 'escalated', 'ticket_id': 'T-001'}, 'date': '2026-11-15T08:04:42'}
+
+=== Limitations & next-step roadmap ===
+- FAQ matching is keyword-based, not semantic; would miss paraphrased questions.
+- No human-approval gate yet for ticket priority escalation (P1 incidents).
+- Next step: add a retrieval-based FAQ match and a priority-classification skill.

@@ -1,0 +1,13 @@
+=== SUCCESS PATH ===
+{'node': 'requirement', 'owner': 'requirement_agent', 'success': True, 'state_after': {'requirements': ['user login', 'event listing', 'RSVP button']}}
+{'node': 'planner', 'owner': 'planner_agent', 'success': True, 'state_after': {'requirements': ['user login', 'event listing', 'RSVP button'], 'tasks': {'user login': 'task_for(user login)', 'event listing': 'task_for(event listing)', 'RSVP button': 'task_for(RSVP button)'}}}
+{'node': 'builder', 'owner': 'builder_agent', 'success': True, 'state_after': {'requirements': ['user login', 'event listing', 'RSVP button'], 'tasks': {'user login': 'task_for(user login)', 'event listing': 'task_for(event listing)', 'RSVP button': 'task_for(RSVP button)'}, 'build_ok': True, 'code': 'app.py generated'}}
+{'node': 'tester', 'owner': 'tester_agent', 'success': True, 'state_after': {'requirements': ['user login', 'event listing', 'RSVP button'], 'tasks': {'user login': 'task_for(user login)', 'event listing': 'task_for(event listing)', 'RSVP button': 'task_for(RSVP button)'}, 'build_ok': True, 'code': 'app.py generated', 'tests_passed': True}}
+{'node': 'reviewer', 'owner': 'reviewer_agent', 'success': True, 'state_after': {'requirements': ['user login', 'event listing', 'RSVP button'], 'tasks': {'user login': 'task_for(user login)', 'event listing': 'task_for(event listing)', 'RSVP button': 'task_for(RSVP button)'}, 'build_ok': True, 'code': 'app.py generated', 'tests_passed': True, 'review_clean': True}}
+{'node': 'human_gate', 'owner': 'human', 'success': True, 'state_after': {'requirements': ['user login', 'event listing', 'RSVP button'], 'tasks': {'user login': 'task_for(user login)', 'event listing': 'task_for(event listing)', 'RSVP button': 'task_for(RSVP button)'}, 'build_ok': True, 'code': 'app.py generated', 'tests_passed': True, 'review_clean': True, 'human_signoff': True}}
+
+=== FAILURE PATH (builder fails) ===
+{'node': 'requirement', 'owner': 'requirement_agent', 'success': True, 'state_after': {'requirements': ['user login', 'event listing', 'RSVP button']}}
+{'node': 'planner', 'owner': 'planner_agent', 'success': True, 'state_after': {'requirements': ['user login', 'event listing', 'RSVP button'], 'tasks': {'user login': 'task_for(user login)', 'event listing': 'task_for(event listing)', 'RSVP button': 'task_for(RSVP button)'}}}
+{'node': 'builder', 'owner': 'builder_agent', 'success': False, 'state_after': {'requirements': ['user login', 'event listing', 'RSVP button'], 'tasks': {'user login': 'task_for(user login)', 'event listing': 'task_for(event listing)', 'RSVP button': 'task_for(RSVP button)'}, 'build_ok': False}}
+{'node': 'builder', 'failure_behavior_triggered': 'retry_build_or_escalate'}

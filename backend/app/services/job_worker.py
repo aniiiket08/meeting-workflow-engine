@@ -80,6 +80,7 @@ def _process(job: Job, db: Any) -> dict[str, Any]:
                 },
                 agent_name="scheduling_agent",
             )
+            was_already_scheduled = meeting.status in (MeetingStatus.ROOM_BOOKED, MeetingStatus.SCHEDULED)
             meeting.start_time = start_dt
             meeting.end_time = end_dt
             meeting.room_id = None
@@ -87,7 +88,26 @@ def _process(job: Job, db: Any) -> dict[str, Any]:
             meeting.zoom_join_url = zoom.get("join_url")
             meeting.status = MeetingStatus.ROOM_BOOKED
             db.commit()
+
+            from app.services.email_service import email_service
+            event_type = "rescheduled" if was_already_scheduled else "scheduled"
+            recipients = [
+                a.user.email if a.user else a.external_email
+                for a in meeting.attendees
+                if a.user or a.external_email
+            ] or ["yeezusftwww@gmail.com", "02fe23bci038@kletech.ac.in"]
+            email_service.notify_meeting_event(
+                event_type=event_type,
+                meeting_title=meeting.title,
+                start_time_iso=meeting.start_time.isoformat() if meeting.start_time else None,
+                end_time_iso=meeting.end_time.isoformat() if meeting.end_time else None,
+                location=f"Zoom: {meeting.zoom_join_url}",
+                recipients=recipients,
+                meeting_id=meeting.id,
+            )
+
             return {"status": "online", "zoom": zoom}
+        was_already_scheduled = meeting.status in (MeetingStatus.ROOM_BOOKED, MeetingStatus.SCHEDULED)
         booking = run_room_booking_agent(
             db=db,
             meeting_id=meeting.id,
@@ -96,6 +116,23 @@ def _process(job: Job, db: Any) -> dict[str, Any]:
             end_time_iso=payload["selected_end_time"],
             equipment_needed=payload["equipment_needed"],
             room_id=payload["room_id"],
+        )
+        db.refresh(meeting)
+        from app.services.email_service import email_service
+        event_type = "rescheduled" if was_already_scheduled else "scheduled"
+        recipients = [
+            a.user.email if a.user else a.external_email
+            for a in meeting.attendees
+            if a.user or a.external_email
+        ] or ["yeezusftwww@gmail.com", "02fe23bci038@kletech.ac.in"]
+        email_service.notify_meeting_event(
+            event_type=event_type,
+            meeting_title=meeting.title,
+            start_time_iso=meeting.start_time.isoformat() if meeting.start_time else None,
+            end_time_iso=meeting.end_time.isoformat() if meeting.end_time else None,
+            location=f"Room: {booking.get('room', {}).get('name', 'Campus Room')}",
+            recipients=recipients,
+            meeting_id=meeting.id,
         )
         return {"room_booking": booking}
 

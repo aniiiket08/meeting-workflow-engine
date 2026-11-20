@@ -1,0 +1,186 @@
+CONFLICT detected before finalizing: Friday, Wednesday
+Resolution: move affected sessions to 20:00-22:00.
+Initial plan: {
+  "Monday": {
+    "subject": "Data Structures",
+    "time": "17:00-19:00"
+  },
+  "Tuesday": {
+    "subject": "Operating Systems",
+    "time": "17:00-19:00"
+  },
+  "Wednesday": {
+    "subject": "AI Agents",
+    "time": "20:00-22:00"
+  },
+  "Thursday": {
+    "subject": "Data Structures",
+    "time": "17:00-19:00"
+  },
+  "Friday": {
+    "subject": "Operating Systems",
+    "time": "20:00-22:00"
+  },
+  "Saturday": {
+    "subject": "AI Agents",
+    "time": "17:00-19:00"
+  }
+}
+Same plan object preserved: True
+Revised plan: {
+  "Monday": {
+    "subject": "Data Structures",
+    "time": "17:00-19:00"
+  },
+  "Tuesday": {
+    "subject": "Operating Systems",
+    "time": "20:00-22:00"
+  },
+  "Wednesday": {
+    "subject": "AI Agents",
+    "time": "20:00-22:00"
+  },
+  "Thursday": {
+    "subject": "Data Structures",
+    "time": "17:00-19:00"
+  },
+  "Friday": {
+    "subject": "Operating Systems",
+    "time": "20:00-21:00"
+  },
+  "Saturday": {
+    "subject": "AI Agents",
+    "time": "17:00-19:00"
+  }
+}
+Full iteration log: [
+  {
+    "iteration": 1,
+    "planned": "ask for subjects",
+    "action": "asked user for subjects",
+    "observed": [
+      "Data Structures",
+      "Operating Systems",
+      "AI Agents"
+    ],
+    "stopped": false
+  },
+  {
+    "iteration": 2,
+    "planned": "ask for hours_per_day",
+    "action": "asked user for hours_per_day",
+    "observed": 2,
+    "stopped": false
+  },
+  {
+    "iteration": 3,
+    "planned": "ask for unavailable_days",
+    "action": "asked user for unavailable_days",
+    "observed": [
+      "Sunday"
+    ],
+    "stopped": false
+  },
+  {
+    "iteration": 4,
+    "planned": "read existing schedule before generating plan",
+    "action": "tool call: read_existing_schedule()",
+    "observed": {
+      "busy_days": [
+        "Wednesday",
+        "Friday"
+      ]
+    },
+    "stopped": false
+  },
+  {
+    "action": "conflict_reported_before_finalization",
+    "days": [
+      "Friday",
+      "Wednesday"
+    ]
+  },
+  {
+    "iteration": 6,
+    "planned": "generate schedule from gathered requirements",
+    "action": "built weekly plan",
+    "observed": {
+      "Monday": {
+        "subject": "Data Structures",
+        "time": "17:00-19:00"
+      },
+      "Tuesday": {
+        "subject": "Operating Systems",
+        "time": "20:00-22:00"
+      },
+      "Wednesday": {
+        "subject": "AI Agents",
+        "time": "20:00-22:00"
+      },
+      "Thursday": {
+        "subject": "Data Structures",
+        "time": "17:00-19:00"
+      },
+      "Friday": {
+        "subject": "Operating Systems",
+        "time": "20:00-21:00"
+      },
+      "Saturday": {
+        "subject": "AI Agents",
+        "time": "17:00-19:00"
+      }
+    },
+    "stopped": true,
+    "stop_reason": "goal.schedule_generated is now True"
+  },
+  {
+    "iteration": 7,
+    "planned": "apply user feedback to existing plan",
+    "action": "feedback received: 'Move Tuesday's session to the evening.'",
+    "observed": null,
+    "stopped": false
+  },
+  {
+    "iteration": 8,
+    "planned": "confirm revised plan",
+    "action": "mutated existing plan (not regenerated from scratch)",
+    "observed": {
+      "Monday": {
+        "subject": "Data Structures",
+        "time": "17:00-19:00"
+      },
+      "Tuesday": {
+        "subject": "Operating Systems",
+        "time": "20:00-22:00"
+      },
+      "Wednesday": {
+        "subject": "AI Agents",
+        "time": "20:00-22:00"
+      },
+      "Thursday": {
+        "subject": "Data Structures",
+        "time": "17:00-19:00"
+      },
+      "Friday": {
+        "subject": "Operating Systems",
+        "time": "20:00-21:00"
+      },
+      "Saturday": {
+        "subject": "AI Agents",
+        "time": "17:00-19:00"
+      }
+    },
+    "stopped": true,
+    "stop_reason": "revision applied without restarting the loop"
+  },
+  {
+    "action": "feedback received",
+    "feedback": "Also make Friday's session shorter, only one hour"
+  },
+  {
+    "action": "mutated same plan",
+    "day": "Friday",
+    "duration_hours": 1
+  }
+]
+PASS: requested revisions and conflict checks

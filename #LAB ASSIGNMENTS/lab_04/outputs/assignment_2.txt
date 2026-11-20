@@ -1,0 +1,4 @@
+Fresh database: [memory, dated 2026-11-13] Per a decision on 2026-11-13, we chose PostgreSQL
+Old database: Warning: this decision is from 60 days ago and may be out of date.
+[memory, dated 2026-09-16] Per a decision on 2026-09-16, we chose SQLite
+PASS: exact-topic isolation and retention warning

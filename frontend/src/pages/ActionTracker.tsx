@@ -136,7 +136,8 @@ export const ActionTracker: React.FC = () => {
       // Meeting filter
       if (meetingFilter && String(item.meeting_id) !== meetingFilter) return false;
 
-      // Status filter
+      // Status filter — "all" tab shows only pending tasks (never completed)
+      if (statusFilter === "all" && item.status !== "pending") return false;
       if (statusFilter !== "all" && item.status !== statusFilter) return false;
 
       // Only mine
@@ -253,7 +254,7 @@ export const ActionTracker: React.FC = () => {
                 onClick={() => setStatusFilter(st)}
               >
                 {st === "all" ? "All Items" : st.replace("_", " ")} (
-                {items.filter((i) => (st === "all" ? true : i.status === st)).length}
+                {items.filter((i) => (st === "all" ? i.status === "pending" : i.status === st)).length}
                 )
               </button>
             ))}

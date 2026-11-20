@@ -1,0 +1,143 @@
+Tool schemas: {
+  "read_csv": {
+    "input": {
+      "source_text": "str"
+    },
+    "output": {
+      "rows": "list",
+      "row_count": "int"
+    }
+  },
+  "filter_category": {
+    "input": {
+      "rows": "list",
+      "category": "str"
+    },
+    "output": {
+      "rows": "nonempty list OR error"
+    }
+  },
+  "calculator": {
+    "input": {
+      "operation": "sum|average",
+      "values": "list[number]"
+    },
+    "output": {
+      "result": "number OR error"
+    }
+  },
+  "events_api": {
+    "input": {
+      "event_name": "str"
+    },
+    "output": {
+      "date": "str",
+      "location": "str OR error"
+    }
+  },
+  "send_notification": {
+    "input": {
+      "message": "str"
+    },
+    "output": {
+      "draft": "str",
+      "sent": "false"
+    }
+  }
+}
+Question: What's the average sign-up for technical events only?
+Answer: {'average': 7.0, 'event_count': 2}
+Empty subset blocked: filter_category failed: no matching rows
+Trace: [
+  {
+    "tool": "read_csv",
+    "reason": "Load signups and categories from CSV",
+    "input": {
+      "source_text": "event,signups,category\nAI Talk,6,technical\nHackathon,8,technical\nSocial Mixer,12,social\n"
+    },
+    "output": {
+      "rows": [
+        {
+          "event": "AI Talk",
+          "signups": "6",
+          "category": "technical"
+        },
+        {
+          "event": "Hackathon",
+          "signups": "8",
+          "category": "technical"
+        },
+        {
+          "event": "Social Mixer",
+          "signups": "12",
+          "category": "social"
+        }
+      ],
+      "row_count": 3
+    }
+  },
+  {
+    "tool": "filter_category",
+    "reason": "Restrict calculation to requested technical category",
+    "input": {
+      "rows": [
+        {
+          "event": "AI Talk",
+          "signups": "6",
+          "category": "technical"
+        },
+        {
+          "event": "Hackathon",
+          "signups": "8",
+          "category": "technical"
+        },
+        {
+          "event": "Social Mixer",
+          "signups": "12",
+          "category": "social"
+        }
+      ],
+      "category": "technical"
+    },
+    "output": {
+      "rows": [
+        {
+          "event": "AI Talk",
+          "signups": "6",
+          "category": "technical"
+        },
+        {
+          "event": "Hackathon",
+          "signups": "8",
+          "category": "technical"
+        }
+      ]
+    }
+  },
+  {
+    "tool": "calculator",
+    "reason": "Average validated nonempty numeric signup subset",
+    "input": {
+      "operation": "average",
+      "values": [
+        6,
+        8
+      ]
+    },
+    "output": {
+      "result": 7.0
+    }
+  },
+  {
+    "tool": "filter_category",
+    "reason": "Validate absent category",
+    "input": {
+      "rows": [],
+      "category": "technical"
+    },
+    "output": {
+      "error": "no matching rows"
+    }
+  }
+]
+PASS: justified drafting and validated tool chain

@@ -1,0 +1,13 @@
+[memory, dated 2026-07-03] Per a decision on 2026-07-03, we chose PostgreSQL
+
+--- A team member proposes a change ---
+This conflicts with the stored decision from 2026-07-03 ('we chose PostgreSQL'). Should I update memory to 'we're switching to SQLite'?
+
+--- Team lead confirms the switch (permitted write) ---
+Write permitted: memory updated by team_lead.
+
+--- Attempted write by an unpermitted role ---
+Blocked as expected: role 'member' is not permitted to write memory
+
+--- Final answer reflects the confirmed update ---
+[memory, dated 2026-11-15] Per a decision on 2026-11-15, we're switching to SQLite

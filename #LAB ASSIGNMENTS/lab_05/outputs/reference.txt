@@ -1,0 +1,19 @@
+=== Capability discovery ===
+  read_file (resource)  input={'path': 'str'}  output={'content': 'str'}
+  query_db (tool)  input={'sql': 'str'}  output={'rows': 'list'}
+  call_api (tool)  input={'endpoint': 'str'}  output={'data': 'any'}
+
+=== Call 1: read_file (resource) ===
+{'content': 'Agentic AI Systems - mini MCP server demo.'}
+
+=== Call 2: query_db (tool, permitted caller, SELECT only) ===
+{'rows': [('AI Club Talk', 12), ('Hackathon Kickoff', 9), ('Robotics Demo', 15)]}
+
+=== Call 3: call_api (tool) ===
+{'data': ['AI Club Talk', 'Robotics Demo']}
+
+=== Rejection path: disallowed statement ===
+{'error': 'only SELECT statements are permitted through this tool'}
+
+=== Rejection path: disallowed caller ===
+{'error': "caller 'unregistered_agent' is not permitted to use query_db"}

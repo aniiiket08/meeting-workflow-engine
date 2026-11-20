@@ -1,0 +1,23 @@
+=== Question ===
+What are the demonstrated benefits and limitations of retrieval-augmented generation (RAG) for domain-specific question answering, as of the last year?
+Success criteria: At least 3 independent sources; at least 1 limitation identified; 1 executive summary.
+
+=== Evidence table ===
+{'id': 'S1', 'type': 'peer-reviewed paper', 'date': '2026-02', 'claim': 'RAG reduces hallucination rate by 41% on domain QA vs a non-retrieval baseline.', 'evidence': '200 held-out questions from a medical knowledge base.', 'limitation': 'Small, single-domain evaluation set; may not generalize.'}
+{'id': 'S2', 'type': 'vendor engineering blog', 'date': '2026-04', 'claim': 'RAG improves answer accuracy by 35% in an internal support-ticket QA system.', 'evidence': 'Internal A/B test over 10,000 tickets.', 'limitation': 'Funded/internal evaluation; no independent replication reported.'}
+{'id': 'S3', 'type': 'independent benchmark report', 'date': '2026-05', 'claim': 'RAG introduces a measurable latency overhead of 200-400ms per query.', 'evidence': 'Benchmarked across 5 open-source RAG pipelines.', 'limitation': 'Latency depends heavily on retrieval index size; not tested at scale.'}
+
+=== Comparison ===
+{'agreements': ['S1 and S2 agree that RAG improves factual/answer accuracy over a non-retrieval baseline, in different domains.'], 'conflicts': ['S3 raises a latency cost that neither S1 nor S2 mentions -- the accuracy-focused sources are silent on performance overhead, which is a gap rather than a direct contradiction.'], 'gaps': ['No source in this set reports on RAG performance for non-English languages.']}
+
+=== Executive summary (every line traceable to a table row) ===
+[S1] RAG reduces hallucination rate by 41% on domain QA vs a non-retrieval baseline.
+[S2] RAG improves answer accuracy by 35% in an internal support-ticket QA system.
+[S3] RAG introduces a measurable latency overhead of 200-400ms per query.
+[S1,S2] S1 and S2 agree that RAG improves factual/answer accuracy over a non-retrieval baseline, in different domains.
+[S1,S2,S3] S3 raises a latency cost that neither S1 nor S2 mentions -- the accuracy-focused sources are silent on performance overhead, which is a gap rather than a direct contradiction.
+[gap] No source in this set reports on RAG performance for non-English languages.
+
+=== Recommended next questions ===
+- How does RAG latency scale with retrieval index size beyond the tested range?
+- Do RAG accuracy gains hold for non-English domain QA?

@@ -1,0 +1,26 @@
+
+Q: How many students signed up for events this month, and what's the average per event?
+A: Total sign-ups: 74. Average per event: 12.33 (across 6 events).
+
+Q: Where and when is the Hackathon Kickoff?
+A: Hackathon Kickoff is at Innovation Lab on 2026-07-05.
+
+Q: Where and when is the Capstone Expo?
+A: I don't have location/date metadata for Capstone Expo in the events API.
+
+=== Full tool trace ===
+1. tool=read_csv  reason="sign-up counts live in the CSV export, not the events API"
+   input={}
+   output={'rows': [{'event': 'AI Club Talk', 'signups': '12'}, {'event': 'Hackathon Kickoff', 'signups': '9'}, {'event': 'Robotics Demo', 'signups': '15'}, {'event': 'GenAI Workshop', 'signups': '7'}, {'event': 'Capstone Expo', 'signups': '20'}, {'event': 'Career Panel', 'signups': '11'}], 'row_count': 6}
+2. tool=calculator  reason="sum the extracted signup column"
+   input={'operation': 'sum', 'values': [12, 9, 15, 7, 20, 11]}
+   output={'result': 74}
+3. tool=calculator  reason="compute average over the same column"
+   input={'operation': 'average', 'values': [12, 9, 15, 7, 20, 11]}
+   output={'result': 12.333333333333334}
+4. tool=events_api  reason="location/date metadata lives in the events API, not the CSV"
+   input={'event_name': 'Hackathon Kickoff'}
+   output={'date': '2026-07-05', 'location': 'Innovation Lab'}
+5. tool=events_api  reason="checking events API for Capstone Expo metadata"
+   input={'event_name': 'Capstone Expo'}
+   output={'error': "no event metadata found for 'Capstone Expo'"}

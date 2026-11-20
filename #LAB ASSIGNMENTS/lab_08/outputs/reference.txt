@@ -1,0 +1,15 @@
+=== Parallel role outputs ===
+  research: Past events favored a 24-hour format with themed tracks.
+  logistics: {'venue': 'Grand Hall', 'venue_cost': 45000, 'date': 'Saturday'}
+  budget: {'total_cap': 30000}
+  judging: Judge on innovation, technical depth, and demo quality.
+
+=== Merged draft plan ===
+{'format_notes': 'Past events favored a 24-hour format with themed tracks.', 'venue': 'Grand Hall', 'venue_cost': 45000, 'date': 'Saturday', 'budget_cap': 30000, 'judging_criteria': 'Judge on innovation, technical depth, and demo quality.'}
+
+=== Critique: conflicts found ===
+  {'conflict': 'venue_cost exceeds budget_cap', 'roles_involved': ['logistics', 'budget'], 'logistics_value': 45000, 'budget_value': 30000}
+  -> resolution: {'rule_applied': 'budget_over_preference', 'resolution': 'Reject venue at 45000; request logistics propose an alternative under 30000.'}
+
+=== Final conflict log (submitted as swarm report artifact) ===
+{'conflict': 'venue_cost exceeds budget_cap', 'roles_involved': ['logistics', 'budget'], 'logistics_value': 45000, 'budget_value': 30000, 'rule_applied': 'budget_over_preference', 'resolution': 'Reject venue at 45000; request logistics propose an alternative under 30000.'}

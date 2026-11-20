@@ -29,9 +29,9 @@ def seed_database(db: Session) -> None:
         ("Principal", "principal", "principal@university.com", UserRole.PRINCIPAL),
         ("HOD", "hod", "hod@university.com", UserRole.HOD),
         ("Teacher", "teacher", "teacher@university.com", UserRole.TEACHER),
-        ("Aniket", "aniket", "aniket@university.com", UserRole.STUDENT),
+        ("Aniket", "aniket", "yeezusftwww@gmail.com", UserRole.STUDENT),
         ("Sujal", "sujal", "sujal@university.com", UserRole.STUDENT),
-        ("Viraj", "viraj", "viraj@university.com", UserRole.STUDENT),
+        ("Viraj", "viraj", "02fe23bci038@kletech.ac.in", UserRole.STUDENT),
         ("Sarvesh", "sarvesh", "sarvesh@university.com", UserRole.STUDENT),
     ]
     created_users = 0

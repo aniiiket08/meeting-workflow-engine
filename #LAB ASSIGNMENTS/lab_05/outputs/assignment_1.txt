@@ -1,0 +1,7 @@
+Discovered: {'name': 'read_file', 'kind': 'resource', 'input': {'path': 'str'}, 'output': {'content': 'str'}}
+Discovered: {'name': 'query_db', 'kind': 'tool', 'input': {'sql': 'str'}, 'output': {'rows': 'list'}}
+Discovered: {'name': 'call_api', 'kind': 'tool', 'input': {'endpoint': 'str'}, 'output': {'data': 'any'}}
+Discovered: {'name': 'list_files', 'kind': 'resource', 'input': {}, 'output': {'files': 'list'}}
+Discovered call output: {'files': ['README.md']}
+Read: {'content': 'Agentic AI Systems - mini MCP server demo.'}
+PASS: manifest discovery and structured path rejection

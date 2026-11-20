@@ -1,0 +1,5 @@
+Original mechanical result: {'domain': 'Mechanical Engineering -- Predictive Maintenance', 'latest_reading': {'t': 5, 'vibration_mm_s': 6.2, 'temp_c': 84}, 'condition': 'ALARM', 'trend': 'worsening', 'recommended_action': 'recommend_shutdown_for_human_review', 'auto_executed': False, 'evaluation_method': 'Threshold classification against ISO-10816-style vibration bands, cross-checked with temperature trend over the log window.'}
+All readings below ALARM: [{'t': 0, 'vibration_mm_s': 3.0, 'temp_c': 72}, {'t': 1, 'vibration_mm_s': 3.3, 'temp_c': 72}, {'t': 2, 'vibration_mm_s': 3.7, 'temp_c': 72}]
+One warning: {'condition': 'WARNING', 'three_warning_trend': False, 'recommended_action': 'continue_monitoring', 'auto_executed': False}
+Three warnings: {'condition': 'WARNING', 'three_warning_trend': True, 'recommended_action': 'schedule_inspection', 'auto_executed': False}
+PASS: electrical human review and mechanical trend escalation

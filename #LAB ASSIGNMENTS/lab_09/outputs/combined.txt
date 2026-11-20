@@ -1,0 +1,15 @@
+SYNTHETIC teaching sources; figures are not real-world research findings.
+Evidence row: {'id': 'S1', 'type': 'peer-reviewed paper', 'date': '2026-02', 'claim': 'RAG reduces hallucination rate by 41% on domain QA vs a non-retrieval baseline.', 'evidence': '200 held-out questions from a medical knowledge base.', 'limitation': 'Small, single-domain evaluation set; may not generalize.', 'quality_tier': 3}
+Evidence row: {'id': 'S2', 'type': 'vendor engineering blog', 'date': '2026-04', 'claim': 'RAG improves answer accuracy by 35% in an internal support-ticket QA system.', 'evidence': 'Internal A/B test over 10,000 tickets.', 'limitation': 'Funded/internal evaluation; no independent replication reported.', 'quality_tier': 1}
+Evidence row: {'id': 'S3', 'type': 'independent benchmark report', 'date': '2026-05', 'claim': 'RAG introduces a measurable latency overhead of 200-400ms per query.', 'evidence': 'Benchmarked across 5 open-source RAG pipelines.', 'limitation': 'Latency depends heavily on retrieval index size; not tested at scale.', 'quality_tier': 2}
+Evidence row: {'id': 'S4', 'type': 'vendor engineering blog', 'date': '2026-06', 'claim': 'RAG produced no measurable hallucination reduction in legal QA.', 'evidence': '500 legal questions evaluated with human grading.', 'limitation': 'Different domain and evaluation method from S1.', 'quality_tier': 1}
+Comparison: {'conflicts': [{'sources': ['S1', 'S4'], 'kind': 'direct contradiction', 'explanation': 'Different medical/legal domains, dataset sizes, and grading methods plausibly explain disagreement; cause not established.'}], 'gaps': ['Non-English evaluation absent', 'S1/S2 do not report latency; S3 does.']}
+[S1] RAG reduces hallucination rate by 41% on domain QA vs a non-retrieval baseline. Evidence: 200 held-out questions from a medical knowledge base. Limitation: Small, single-domain evaluation set; may not generalize.
+[S2] RAG improves answer accuracy by 35% in an internal support-ticket QA system. Evidence: Internal A/B test over 10,000 tickets. Limitation: Funded/internal evaluation; no independent replication reported.
+[S3] RAG introduces a measurable latency overhead of 200-400ms per query. Evidence: Benchmarked across 5 open-source RAG pipelines. Limitation: Latency depends heavily on retrieval index size; not tested at scale.
+[S4] RAG produced no measurable hallucination reduction in legal QA. Evidence: 500 legal questions evaluated with human grading. Limitation: Different domain and evaluation method from S1.
+{'sources': ['S1', 'S4'], 'kind': 'direct contradiction', 'explanation': 'Different medical/legal domains, dataset sizes, and grading methods plausibly explain disagreement; cause not established.'}
+Lean provisionally toward [S1] under the declared quality rubric; [S4] is down-weighted, not discarded. Domains remain incomparable; no universal effect claimed.
+Non-English evaluation absent
+S1/S2 do not report latency; S3 does.
+PASS: traceable conflict and source-quality disclosure

@@ -1,0 +1,3 @@
+Fresh database: [memory, dated 2026-11-13] Per a decision on 2026-11-13, we chose PostgreSQL
+Hosting: [memory, dated 2026-09-16] Per a decision on 2026-09-16, we chose a campus server
+PASS: exact-topic isolation and retention warning
